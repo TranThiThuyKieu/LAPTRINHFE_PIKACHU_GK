@@ -114,3 +114,60 @@ body {
 .nut-huong-dan:hover {
     background-color: var(--secondary-hover);
 }
+.an-di {
+    display: none !important;
+}
+.hop-thoai-huong-dan {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4); /* Nền tối nhẹ làm nổi bật bảng */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 10;
+}
+.noi-dung-huong-dan {
+    background-color: var(--card-bg);
+    width: 100%;
+    max-width: 480px;
+    padding: 25px 30px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    text-align: left;
+}
+.noi-dung-huong-dan h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    text-align: center;
+}
+.danh-sach-luat {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin-bottom: 20px;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+.danh-sach-luat li {
+    margin-bottom: 8px;
+}
+.danh-sach-luat ul {
+    list-style-type: circle;
+    padding-left: 20px;
+    margin-top: 4px;
+}
+.nut-dong {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    margin-top: 10px;
+}
+.nut-dong:hover {
+    background-color: var(--primary-hover);
+}
