@@ -1,0 +1,116 @@
+:root {
+    --bg-color: #f4f6f8;
+    --card-bg: #ffffff;
+    --primary-color: #2b7fff;
+    --primary-hover: #1a66d6;
+    --secondary-color: #f3f4f6;
+    --secondary-hover: #e5e7eb;
+    --text-dark: #1f2937;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
+    --radius: 10px;
+}
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: sans-serif;
+}
+body {
+    background-color: var(--bg-color);
+    color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+.khung-game {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    min-height: 600px;
+    background-color: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+}
+.lop-nen-mo {
+    display: none;
+}
+.man-hinh-menu {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+.tieude-game {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+}
+.nhom-chon-level {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    margin-bottom: 25px;
+}
+.nhom-chon-level label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.nhom-chon-level select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 1rem;
+    color: var(--text-dark);
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+.nhom-chon-level select:focus {
+    border-color: var(--primary-color);
+}
+.nhom-nut-bam {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.nut-bam {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+.nut-bam:active {
+    transform: scale(0.98);
+}
+.nut-bat-dau {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
+.nut-bat-dau:hover {
+    background-color: var(--primary-hover);
+}
+.nut-huong-dan {
+    background-color: var(--secondary-color);
+    color: var(--text-dark);
+    border-color: var(--border-color);
+}
+.nut-huong-dan:hover {
+    background-color: var(--secondary-hover);
+}
