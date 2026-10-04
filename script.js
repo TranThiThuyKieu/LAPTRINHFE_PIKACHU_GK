@@ -15,6 +15,26 @@ document.addEventListener("DOMContentLoaded", function() {
             levelItems.forEach(lvl => lvl.style.borderColor = "#eaebef");
             this.style.borderColor = "#3b82f6";
             console.log("Bắt đầu game với: " + levelTitle);
+            manHinhChonLevel.style.display = "none";
+            document.getElementById("man-hinh-game").style.display = "flex";
+            khoiTaoGame();
         });
     });
+
+    function khoiTaoGame() {
+        const bangGame = document.getElementById("bang-game");
+        bangGame.innerHTML = ''; // Xóa bàn cũ nếu có
+
+        // Tạo 36 ô với 36 hình khác nhau (từ pieces1.png đến pieces36.png)
+        for(let i = 1; i <= 36; i++) {
+            const oGame = document.createElement('div');
+            oGame.className = 'o-game';
+
+            const img = document.createElement('img');
+            img.src = `Resources/pieces${i}.png`;
+
+            oGame.appendChild(img);
+            bangGame.appendChild(oGame);
+        }
+    }
 });
