@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const pikachuBoard = document.getElementById("pikachu-board");
     const lineCanvas = document.getElementById("line-canvas");
     const levelItems = document.querySelectorAll(".level-item");
+    const btnChoiLai = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
+        .find(btn => btn.textContent.trim() === 'Chơi Lại');
     const hang = 9;
     const cot = 16;
     const full_hang = hang + 2;
@@ -25,6 +27,14 @@ document.addEventListener("DOMContentLoaded", function() {
             manHinhBatDau.style.display = "none";
             manHinhChonLevel.style.display = "flex";
         });
+    }
+    if (btnChoiLai) {
+        btnChoiLai.addEventListener('click', function() {
+            if (manHinhGame.style.display !== 'none') {
+                if (timeInterval) clearInterval(timeInterval);
+                clearCanvas();
+                initLevel1();
+            }});
     }
     levelItems.forEach(function(item) {
         item.addEventListener("click", function() {
