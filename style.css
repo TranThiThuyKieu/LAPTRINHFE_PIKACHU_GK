@@ -400,3 +400,57 @@ body {
         filter: brightness(1.3);
     }
 }
+body.dark-mode {
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+body.dark-mode .game-dashboard,
+body.dark-mode .dau-man-hinh {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+body.dark-mode .dau-man-hinh h1,
+body.dark-mode .value,
+body.dark-mode .ten-game,
+body.dark-mode .level-title {
+    color: #f8fafc;
+}
+body.dark-mode .cot-dieu-khien,
+body.dark-mode .cot-thong-so,
+body.dark-mode .khung-chua-game {
+    background-color: #0f172a;
+    border-color: #334155;
+}
+body.dark-mode .tieude-nhom,
+body.dark-mode .label,
+body.dark-mode .mo-ta-game,
+body.dark-mode .level-desc {
+    color: #94a3b8;
+}
+body.dark-mode .nut-dieu-khien,
+body.dark-mode .nut-tro-giup,
+body.dark-mode .the-so-lieu,
+body.dark-mode .level-item {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+body.dark-mode .nut-dieu-khien:hover,
+body.dark-mode .nut-tro-giup:hover,
+body.dark-mode .level-item:hover {
+    background-color: #334155;
+}
+body.dark-mode .modal-content {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+body.dark-mode .modal-content h2 {
+    color: #f8fafc;
+}
+body.dark-mode .modal-content p {
+    color: #cbd5e1;
+}
+body.dark-mode .time-bar-container {
+    background-color: #334155;
+    border-color: #475569;
+}
