@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const levelItems = document.querySelectorAll(".level-item");
     const btnChoiLai = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
         .find(btn => btn.textContent.trim() === 'Chơi Lại');
+    const btnCheDo = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
+        .find(btn => btn.textContent.includes('Chế độ:'));
     const btnTamDung = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
         .find(btn => btn.textContent.trim() === 'Tạm Dừng' || btn.textContent.trim() === 'Tiếp Tục');
     const hang = 9;
@@ -45,6 +47,20 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
                 initLevel1();
             }});
+    }
+    if (btnCheDo) {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark-mode');
+            btnCheDo.textContent = 'Chế độ: Tối';
+        } else {
+            btnCheDo.textContent = 'Chế độ: Sáng';}
+        btnCheDo.addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            btnCheDo.textContent = isDark ? 'Chế độ: Tối' : 'Chế độ: Sáng';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
     }
     if (btnTamDung) {
         btnTamDung.addEventListener('click', function() {
