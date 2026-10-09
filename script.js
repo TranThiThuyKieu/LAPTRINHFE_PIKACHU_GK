@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const pikachuBoard = document.getElementById("pikachu-board");
     const lineCanvas = document.getElementById("line-canvas");
     const levelItems = document.querySelectorAll(".level-item");
+    const diemElement = document.getElementById("diem-so");
+    const kyLucElement = document.getElementById("ky-luc");
     const btnChoiLai = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
         .find(btn => btn.textContent.trim() === 'Chơi Lại');
     const btnCheDo = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
@@ -28,6 +30,8 @@ document.addEventListener("DOMContentLoaded", function() {
     let isProcessing = false;
     let hintTimer = null;
     let isPaused = false;
+    let currentScore = 0;
+    let highScore = parseInt(localStorage.getItem("pikachu_high_score")) || 0;
     if (btnBatDau) {
         btnBatDau.addEventListener("click", function() {
             manHinhBatDau.style.display = "none";
@@ -82,6 +86,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     }
+    if (kyLucElement) {kyLucElement.textContent = highScore;}
     levelItems.forEach(function(item) {
         item.addEventListener("click", function() {
             const levelTitle = this.querySelector(".level-title").innerText;
@@ -98,6 +103,7 @@ document.addEventListener("DOMContentLoaded", function() {
         pikachuBoard.innerHTML = '';
         selectedCard = null;
         isProcessing = false;
+        resetScore();
         isPaused = false;
         if (btnTamDung) btnTamDung.textContent = 'Tạm Dừng';
         pikachuBoard.style.pointerEvents = 'auto';
@@ -161,6 +167,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         selectedCard = null;
                         isProcessing = false;
                         remainingPairs--;
+                        addScore(10);
                         if (remainingPairs === 0) {
                             gameWin();
                         } else {
@@ -349,4 +356,14 @@ document.addEventListener("DOMContentLoaded", function() {
         const hintCards = document.querySelectorAll(".pokemon-card.hint");
         hintCards.forEach(card => card.classList.remove("hint"));
     }
+    function addScore(points) {
+        currentScore += points;
+        if (diemElement) diemElement.textContent = currentScore;
+        if (currentScore > highScore) {
+            highScore = currentScore;
+            if (kyLucElement) kyLucElement.textContent = highScore;
+            localStorage.setItem("pikachu_high_score", highScore);}}
+    function resetScore() {
+        currentScore = 0;
+        if (diemElement) diemElement.textContent = 0;}
 });
