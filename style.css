@@ -384,3 +384,19 @@ body {
 .btn-modal:hover {
     background-color: #2563eb;
 }
+.pokemon-card.hint {
+    border: 2px solid #eab308 !important;
+    box-shadow: 0 0 12px #fde047, inset 0 0 8px #fde047 !important;
+    animation: hintPulse 0.8s infinite alternate;
+    z-index: 5;
+}
+@keyframes hintPulse {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    100% {
+        transform: scale(1.08);
+        filter: brightness(1.3);
+    }
+}

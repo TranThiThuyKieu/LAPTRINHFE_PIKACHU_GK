@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const levelItems = document.querySelectorAll(".level-item");
     const btnChoiLai = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
         .find(btn => btn.textContent.trim() === 'Chơi Lại');
+    const btnTamDung = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
+        .find(btn => btn.textContent.trim() === 'Tạm Dừng' || btn.textContent.trim() === 'Tiếp Tục');
     const hang = 9;
     const cot = 16;
     const full_hang = hang + 2;
@@ -22,6 +24,8 @@ document.addEventListener("DOMContentLoaded", function() {
     let timeRemaining = game_time;
     let remainingPairs = (hang * cot) / 2;
     let isProcessing = false;
+    let hintTimer = null;
+    let isPaused = false;
     if (btnBatDau) {
         btnBatDau.addEventListener("click", function() {
             manHinhBatDau.style.display = "none";
@@ -33,8 +37,34 @@ document.addEventListener("DOMContentLoaded", function() {
             if (manHinhGame.style.display !== 'none') {
                 if (timeInterval) clearInterval(timeInterval);
                 clearCanvas();
+                if (isPaused && btnTamDung) {
+                    isPaused = false;
+                    btnTamDung.textContent = 'Tạm Dừng';
+                    pikachuBoard.style.pointerEvents = 'auto';
+                    pikachuBoard.style.opacity = '1';
+                }
                 initLevel1();
             }});
+    }
+    if (btnTamDung) {
+        btnTamDung.addEventListener('click', function() {
+            if (manHinhGame.style.display === 'none') return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                if (timeInterval) clearInterval(timeInterval);
+                clearTimeout(hintTimer);
+                clearHintHighlight();
+                btnTamDung.textContent = 'Tiếp Tục';
+                pikachuBoard.style.pointerEvents = 'none';
+                pikachuBoard.style.opacity = '0.4';
+            } else {
+                btnTamDung.textContent = 'Tạm Dừng';
+                pikachuBoard.style.pointerEvents = 'auto';
+                pikachuBoard.style.opacity = '1';
+                resumeTimer();
+                resetHintTimer();
+            }
+        });
     }
     levelItems.forEach(function(item) {
         item.addEventListener("click", function() {
@@ -52,6 +82,10 @@ document.addEventListener("DOMContentLoaded", function() {
         pikachuBoard.innerHTML = '';
         selectedCard = null;
         isProcessing = false;
+        isPaused = false;
+        if (btnTamDung) btnTamDung.textContent = 'Tạm Dừng';
+        pikachuBoard.style.pointerEvents = 'auto';
+        pikachuBoard.style.opacity = '1';
         remainingPairs = (hang * cot) / 2;
         lineCanvas.width = full_cot * card_width;
         lineCanvas.height = full_hang * card_height;
@@ -67,7 +101,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 board[r][c] = cards[cardIdx++];}}
         renderBoard();
         startTimer();
-        checkAndShuffleIfNoMoves();}
+        checkAndShuffleIfNoMoves();
+        resetHintTimer();}
     function renderBoard() {
         pikachuBoard.innerHTML = '';
         for (let r = 0; r < full_hang; r++) {
@@ -83,7 +118,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     card.addEventListener("click", () => handleCardClick(r, c, card));}
                 pikachuBoard.appendChild(card);}}}
     function handleCardClick(r, c, element) {
-        if (isProcessing || board[r][c] === 0) return;
+        if (isProcessing || isPaused || board[r][c] === 0) return;
         if (!selectedCard) {
             selectedCard = { r, c, element };
             element.classList.add("active");
@@ -113,7 +148,8 @@ document.addEventListener("DOMContentLoaded", function() {
                         if (remainingPairs === 0) {
                             gameWin();
                         } else {
-                            checkAndShuffleIfNoMoves();}}, 300);
+                            checkAndShuffleIfNoMoves();
+                            resetHintTimer();}}, 300);
                     return;}
             }
             selectedCard.element.classList.remove("active");
@@ -200,7 +236,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 }}
         } while (!hasAvailableMoves() && currentValues.length > 0);
-        renderBoard();}
+        renderBoard();
+        resetHintTimer();}
     function startTimer() {
         if (timeInterval) clearInterval(timeInterval);
         timeRemaining = game_time;
@@ -215,13 +252,31 @@ document.addEventListener("DOMContentLoaded", function() {
                 gameOver();}
             timeBar.style.width = percentage + "%";
         }, 100);}
+    function resumeTimer() {
+        if (timeInterval) clearInterval(timeInterval);
+        const timeBar = document.getElementById("time-bar");
+        timeInterval = setInterval(() => {
+            timeRemaining -= 0.1;
+            let percentage = (timeRemaining / game_time) * 100;
+            if (timeRemaining <= 0) {
+                timeRemaining = 0;
+                percentage = 0;
+                clearInterval(timeInterval);
+                gameOver();}
+            timeBar.style.width = percentage + "%";
+        }, 100);
+    }
     function gameOver() {
+        clearTimeout(hintTimer);
+        clearHintHighlight();
         showModal("Thua cuộc!", "Đã hết thời gian. Bạn có muốn chơi lại?", "Chơi Lại", () => {
             closeModal();
             initLevel1();
         });}
     function gameWin() {
         clearInterval(timeInterval);
+        clearTimeout(hintTimer);
+        clearHintHighlight();
         showModal("Chiến Thắng!", "Chúc mừng bạn đã hoàn thành!", "Chơi Level tiếp", () => {
             closeModal();
             manHinhGame.style.display = "none";
@@ -242,4 +297,40 @@ document.addEventListener("DOMContentLoaded", function() {
     function closeModal() {
         const modal = document.getElementById("game-modal");
         if (modal) modal.remove();}
+    function resetHintTimer() {
+        clearTimeout(hintTimer);
+        clearHintHighlight();
+        hintTimer = setTimeout(() => {showHint();}, 10000);
+    }
+    function findPair() {
+        let activeCards = [];
+        for (let r = 1; r <= hang; r++) {
+            for (let c = 1; c <= cot; c++) {
+                if (board[r][c] !== 0) {
+                    activeCards.push({ r, c, val: board[r][c] });}}
+        }
+        for (let i = 0; i < activeCards.length; i++) {
+            for (let j = i + 1; j < activeCards.length; j++) {
+                if (activeCards[i].val === activeCards[j].val) {
+                    if (canConnect(activeCards[i].r, activeCards[i].c, activeCards[j].r, activeCards[j].c)) {
+                        return [activeCards[i], activeCards[j]];}}}
+        }
+        return null;}
+    function showHint() {
+        const pair = findPair();
+        if (!pair) return;
+        if (selectedCard) {
+            selectedCard.element.classList.remove("active");
+            selectedCard = null;
+        }
+        const [card1, card2] = pair;
+        const el1 = document.querySelector(`.pokemon-card[data-row="${card1.r}"][data-col="${card1.c}"]`);
+        const el2 = document.querySelector(`.pokemon-card[data-row="${card2.r}"][data-col="${card2.c}"]`);
+        if (el1 && el2) {
+            el1.classList.add("hint");
+            el2.classList.add("hint");}}
+    function clearHintHighlight() {
+        const hintCards = document.querySelectorAll(".pokemon-card.hint");
+        hintCards.forEach(card => card.classList.remove("hint"));
+    }
 });
