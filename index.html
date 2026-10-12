@@ -1,121 +1,54 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Pikachu - Layout Mới</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <title>Pikachu - Phong cách Con Rắn</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: sans-serif;
+            background-color: #f4f4f9;
+            margin: 20px;
+        }
+        #game {
+            border-collapse: collapse;
+            margin: auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .cell {
+            width: 38px;
+            height: 42px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            vertical-align: middle;
+            cursor: pointer;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .empty {
+            border-color: transparent !important;
+            background-color: transparent !important;
+            cursor: default;
+        }
+        .selected {
+            outline: 3px solid #2563eb !important;
+            outline-offset: -3px;
+            background-color: #eff6ff !important;
+        }
+        .card-img {
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+    </style>
 </head>
 <body>
-
-    <div class="game-dashboard">
-        <header class="dau-man-hinh">
-            <h1>PIKACHU GAME</h1>
-        </header>
-        <div class="noi-dung-game">
-            <aside class="cot-dieu-khien">
-                <h3 class="tieude-nhom">HỆ THỐNG</h3>
-                <button class="nut-dieu-khien">Tạm Dừng</button>
-                <button class="nut-dieu-khien">Chơi Lại</button>
-                <button class="nut-dieu-khien">Chọn Level</button>
-                <button class="nut-dieu-khien">Chế độ: Sáng</button>
-                <button class="nut-dieu-khien">Âm thanh: Bật</button>
-            </aside>
-            <main class="cot-man-hinh-chinh">
-                <div class="khung-chua-game">
-                    <div class="the-bat-dau" id="man-hinh-bat-dau">
-                        <h2 class="ten-game">Pikachu Game</h2>
-                        <p class="mo-ta-game">Chọn level và nhấn Bắt đầu để bắt đầu chơi.</p>
-                        <button class="nut-bat-dau-lon" id="btn-bat-dau">Bắt Đầu</button>
-                    </div>
-                    <div class="chon-level-container" id="man-hinh-chon-level" style="display: none;">
-                        <div class="danh-sach-level">
-                            <div class="level-item">
-                                <h3 class="level-title">Level 1</h3>
-                                <p class="level-desc">Mức độ cơ bản, các khối không thay đổi vị trí.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 2</h3>
-                                <p class="level-desc">Các khối sẽ rơi xuống dưới sau khi bị xóa.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 3</h3>
-                                <p class="level-desc">Các khối sẽ bay lên trên sau khi bị xóa.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 4</h3>
-                                <p class="level-desc">Các khối sẽ dồn sang trái sau khi bị xóa.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 5</h3>
-                                <p class="level-desc">Các khối sẽ dồn sang phải sau khi bị xóa.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 6</h3>
-                                <p class="level-desc">Các khối dồn tụ vào giữa theo chiều ngang.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 7</h3>
-                                <p class="level-desc">Các khối dồn tụ vào giữa theo chiều dọc.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 8</h3>
-                                <p class="level-desc">Các khối giãn ra hai bên biên ngang.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 9</h3>
-                                <p class="level-desc">Các khối giãn ra hai bên biên dọc.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 10</h3>
-                                <p class="level-desc">Thêm nhiều loại Pokemon hơn.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 11</h3>
-                                <p class="level-desc">Thời gian đếm ngược nhanh hơn.</p>
-                            </div>
-                            <div class="level-item">
-                                <h3 class="level-title">Level 12</h3>
-                                <p class="level-desc">Tổng hợp các hiệu ứng di chuyển.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="game-play-container" id="man-hinh-game" style="display: none;">
-                        <div class="game-header-bar">
-                            <div class="time-bar-container">
-                                <div class="time-bar" id="time-bar"></div>
-                            </div>
-                        </div>
-                        <div class="board-wrapper">
-                            <canvas id="line-canvas"></canvas>
-                        <div class="pikachu-board" id="pikachu-board">
-                        </div>  </div>
-                    </div>
-                </div>
-            </main>
-            <aside class="cot-thong-so">
-                <h3 class="tieude-nhom">THÔNG SỐ</h3>
-                <div class="the-so-lieu">
-                    <span class="label">BÀN</span>
-                    <span class="value">1</span>
-                </div>
-                <div class="the-so-lieu">
-                    <span class="label">ĐIỂM</span>
-                    <span class="value" id="diem-so">0</span>
-                </div>
-                <div class="the-so-lieu">
-                    <span class="label">KỶ LỤC</span>
-                    <span class="value" id="ky-luc">0</span>
-                </div>
-                <h3 class="tieude-nhom do-cach">TRỢ GIÚP</h3>
-                <button class="nut-tro-giup">Đổi vị trí (10)</button>
-                <button class="nut-tro-giup">Gợi ý (3)</button>
-            </aside>
-        </div>
-    </div>
-    <script src="script.js"></script>
+<table id="game"></table>
+<script src="script.js"></script>
 </body>
 </html>
