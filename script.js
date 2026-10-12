@@ -25,6 +25,7 @@ var levelDescriptions = {
     8: "..",
     9: ".."
 };
+var firstCell = null;
 var lineCanvas, timeBar, btnPause, levelTitleSpan, levelDescP, levelSelect, gameContainer;
 function buildUI() {
     let body = document.body;
@@ -117,6 +118,7 @@ function initGame(col, row) {
             let td = document.createElement("td");
             td.id = "cell_" + i + "_" + j;
             td.classList.add("cell");
+            td.onclick = () => onClickCell(i, j);
             tr.appendChild(td);
         }
         game.appendChild(tr);
@@ -219,3 +221,95 @@ function togglePause() {
 buildUI();
 initGame(fullCol, fullRow);
 initBoard();
+function drawLine(path) {
+    let ctx = lineCanvas.getContext("2d");
+    ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+    ctx.beginPath();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#2563eb";
+    ctx.shadowColor = "#60a5fa";
+    ctx.shadowBlur = 6;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < path.length; i++) {
+        let x = path[i].c * cellWidth + cellWidth / 2;
+        let y = path[i].r * cellHeight + cellHeight / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+function clearCanvas() {
+    let ctx = lineCanvas.getContext("2d");
+    ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+}
+function onClickCell(r, c) {
+    if (!isGameStarted || isPaused || board[r][c] === 0) return;
+    let currentCell = document.getElementById("cell_" + r + "_" + c);
+    if (!firstCell) {
+        firstCell = { r, c };
+        currentCell.classList.add("selected");
+    } else if (firstCell.r === r && firstCell.c === c) {
+        firstCell = null;
+        currentCell.classList.remove("selected");
+    } else {
+        let r1 = firstCell.r;
+        let c1 = firstCell.c;
+        if (board[r1][c1] === board[r][c]) {
+            let path = canConnect(r1, c1, r, c);
+            if (path) {
+                currentCell.classList.add("selected");
+                drawLine(path);
+                setTimeout(() => {
+                    clearCanvas();
+                    board[r1][c1] = 0;
+                    board[r][c] = 0;
+                    firstCell = null;
+                    render();
+                }, 300);
+                return;
+            }
+        }
+        document.getElementById("cell_" + firstCell.r + "_" + firstCell.c).classList.remove("selected");
+        firstCell = { r, c };
+        currentCell.classList.add("selected");
+    }
+}
+function canConnect(r1, c1, r2, c2) {
+    let dirs = [
+        { dr: -1, dc: 0 },
+        { dr: 1, dc: 0 },
+        { dr: 0, dc: -1 },
+        { dr: 0, dc: 1 }
+    ];
+    let queue = [{ r: r1, c: c1, dir: -1, turns: 0, path: [{ r: r1, c: c1 }] }];
+    let visited = Array.from({ length: fullRow }, () =>
+        Array.from({ length: fullCol }, () => Array(4).fill(Infinity))
+    );
+    while (queue.length > 0) {
+        let curr = queue.shift();
+        if (curr.r === r2 && curr.c === c2) return curr.path;
+        for (let d = 0; d < 4; d++) {
+            let nr = curr.r + dirs[d].dr;
+            let nc = curr.c + dirs[d].dc;
+            if (nr >= 0 && nr < fullRow && nc >= 0 && nc < fullCol) {
+                let newTurns = (curr.dir === -1 || curr.dir === d) ? curr.turns : curr.turns + 1;
+                if (newTurns <= 2) {
+                    if (board[nr][nc] === 0 || (nr === r2 && nc === c2)) {
+                        if (newTurns < visited[nr][nc][d]) {
+                            visited[nr][nc][d] = newTurns;
+                            queue.push({
+                                r: nr,
+                                c: nc,
+                                dir: d,
+                                turns: newTurns,
+                                path: [...curr.path, { r: nr, c: nc }]
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
