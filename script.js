@@ -74,6 +74,11 @@ function buildUI() {
     btnShuffle.innerText = "Đổi Vị Trí";
     styleBtn(btnShuffle);
     controlPanel.appendChild(btnShuffle);
+    btnShuffle.onclick = function() {
+        if (!isGameStarted || isPaused) return;
+        shuffleBoard();
+    };
+    controlPanel.appendChild(btnShuffle);
 
     let btnHint = document.createElement("button");
     btnHint.innerText = "Gợi Ý";
@@ -266,6 +271,14 @@ function onClickCell(r, c) {
                     board[r][c] = 0;
                     firstCell = null;
                     render();
+                    setTimeout(() => {
+                        clearCanvas();
+                        board[r1][c1] = 0;
+                        board[r][c] = 0;
+                        firstCell = null;
+                        render();
+                        checkAndAutoShuffle();
+                    }, 300);
                 }, 300);
                 return;
             }
@@ -312,4 +325,64 @@ function canConnect(r1, c1, r2, c2) {
         }
     }
     return null;
+}
+function checkHasPairs() {
+    let activeCells = [];
+    for (let i = 1; i <= row; i++) {
+        for (let j = 1; j <= col; j++) {
+            if (board[i][j] !== 0) {
+                activeCells.push({ r: i, c: j, val: board[i][j] });
+            }
+        }
+    }
+    if (activeCells.length === 0) return true;
+    for (let i = 0; i < activeCells.length; i++) {
+        for (let j = i + 1; j < activeCells.length; j++) {
+            if (activeCells[i].val === activeCells[j].val) {
+                if (canConnect(activeCells[i].r, activeCells[i].c, activeCells[j].r, activeCells[j].c)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+function shuffleBoard() {
+    let positions = [];
+    let values = [];
+    for (let i = 1; i <= row; i++) {
+        for (let j = 1; j <= col; j++) {
+            if (board[i][j] !== 0) {
+                positions.push({ r: i, c: j });
+                values.push(board[i][j]);
+            }
+        }
+    }
+    if (values.length === 0) return;
+    values.sort(() => Math.random() - 0.5);
+    for (let i = 0; i < positions.length; i++) {
+        let pos = positions[i];
+        board[pos.r][pos.c] = values[i];
+    }
+
+    render();
+}
+
+function checkAndAutoShuffle() {
+    let shuffleCount = 0;
+    while (!checkHasPairs()) {
+        shuffleBoard();
+        shuffleCount++;
+        if (shuffleCount > 20) break;
+    }
+    if (shuffleCount > 0) {
+        let tip = document.createElement("div");
+        tip.style.cssText = "position:absolute; top:35%; left:50%; transform:translate(-50%,-50%); background:rgba(30,41,59,0.9); color:white; padding:10px 20px; border-radius:8px; font-weight:bold; z-index:30; pointer-events:none; transition:opacity 0.5s;";
+        tip.innerText = "Hết nước đi!";
+        gameContainer.appendChild(tip);
+        setTimeout(() => {
+            tip.style.opacity = "0";
+            setTimeout(() => tip.remove(), 500);
+        }, 1200);
+    }
 }
