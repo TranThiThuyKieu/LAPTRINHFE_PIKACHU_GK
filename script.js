@@ -56,6 +56,7 @@ function buildUI() {
         opt.innerText = "Level " + i;
         levelSelect.appendChild(opt);
     }
+    levelSelect.onchange = changeLevel;
     controlPanel.appendChild(levelSelect);
 
     let btnRestart = document.createElement("button");
@@ -193,6 +194,8 @@ function startGame() {
     isGameStarted = true;
     removeStartOverlay();
     game.style.filter = "none";
+    checkAndAutoShuffle();
+    startTimer();
 }
 function showPauseOverlay() {
     if (document.getElementById("js-pause-overlay")) return;
@@ -385,4 +388,39 @@ function checkAndAutoShuffle() {
             setTimeout(() => tip.remove(), 500);
         }, 1200);
     }
+}
+function startTimer() {
+    if (timeInterval) clearInterval(timeInterval);
+    timeRemaining = gameTime;
+    if (timeBar) {
+        timeBar.style.width = "100%";
+        timeBar.style.backgroundColor = "#22c55e";
+    }
+    timeInterval = setInterval(() => {
+        if (isPaused || !isGameStarted) return;
+        timeRemaining -= 0.1;
+        let percentage = (timeRemaining / gameTime) * 100;
+        if (percentage <= 0) {
+            percentage = 0;
+            clearInterval(timeInterval);
+            alert("Hết giờ! Bạn đã thua cuộc.");
+            isGameStarted = false;
+        }
+        if (timeBar) {
+            if (percentage < 20) {
+                timeBar.style.backgroundColor = "#ef4444";
+            }
+            timeBar.style.width = percentage + "%";
+        }
+    }, 100);
+}
+function changeLevel() {
+    let selectedLvl = parseInt(levelSelect.value);
+    if (selectedLvl !== 1) {
+        alert("Level " + selectedLvl + " đang được phát triển! Trở về Level 1.");
+        levelSelect.value = currentLevel;
+        return;
+    }
+    currentLevel = selectedLvl;
+    initBoard();
 }
