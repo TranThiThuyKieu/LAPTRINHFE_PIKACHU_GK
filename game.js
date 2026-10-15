@@ -6,7 +6,6 @@ var cellWidth = 38;
 var cellHeight = 42;
 var maxPieces = 36;
 var currentLevel = 1;
-var game = document.getElementById("game");
 var board = [];
 var isPaused = false;
 var isGameStarted = false;
@@ -25,97 +24,32 @@ var levelDescriptions = {
     8: "..",
     9: ".."
 };
-var firstCell = null;
-var lineCanvas, timeBar, btnPause, levelTitleSpan, levelDescP, levelSelect, gameContainer;
-function buildUI() {
-    let body = document.body;
-    let header = document.createElement("div");
-    header.style.marginBottom = "15px";
-    header.innerHTML = `
-        <h1 style="color:#2563eb; margin:0 0 5px 0;">GAME PIKACHU</h1>
-        <h3 style="margin:0; color:#475569;">
-            Màn chơi: <span id="level-title" style="color:#2563eb;">Level 1</span>
-        </h3>
-        <p id="level-desc" style="margin:5px 0 0 0; color:#64748b; font-size:14px; font-style:italic;">
-            ${levelDescriptions[1]}
-        </p>
-    `;
-    body.insertBefore(header, game);
-
-    let controlPanel = document.createElement("div");
-    controlPanel.style.marginBottom = "15px";
-
-    let label = document.createElement("label");
-    label.innerHTML = "<b>Level:</b> ";
-    controlPanel.appendChild(label);
-    levelSelect = document.createElement("select");
-    styleBtn(levelSelect);
-    for (let i = 1; i <= 9; i++) {
-        let opt = document.createElement("option");
-        opt.value = i;
-        opt.innerText = "Level " + i;
-        levelSelect.appendChild(opt);
-    }
+var game = document.getElementById("game");
+var lineCanvas = document.getElementById("line-canvas");
+var timeBar = document.getElementById("time-bar");
+var btnPause = document.getElementById("btn-pause");
+var levelTitleSpan = document.getElementById("level-title");
+var levelDescP = document.getElementById("level-desc");
+var levelSelect = document.getElementById("level-select");
+var startOverlay = document.getElementById("start-overlay");
+var pauseOverlay = document.getElementById("pause-overlay");
+var tip = document.getElementById("tip");
+function setupUI() {
+    lineCanvas.width = fullCol * cellWidth;
+    lineCanvas.height = fullRow * cellHeight;
+    levelDescP.innerText = levelDescriptions[currentLevel];
     levelSelect.onchange = changeLevel;
-    controlPanel.appendChild(levelSelect);
-
-    let btnRestart = document.createElement("button");
-    btnRestart.innerText = "Chơi Lại";
-    styleBtn(btnRestart);
-    btnRestart.onclick = initBoard;
-    controlPanel.appendChild(btnRestart);
-
-    btnPause = document.createElement("button");
-    btnPause.innerText = "Tạm Dừng";
-    styleBtn(btnPause);
+    document.getElementById("btn-restart").onclick = initBoard;
     btnPause.onclick = togglePause;
-    controlPanel.appendChild(btnPause);
-
-    let btnShuffle = document.createElement("button");
-    btnShuffle.innerText = "Đổi Vị Trí";
-    styleBtn(btnShuffle);
-    controlPanel.appendChild(btnShuffle);
-    btnShuffle.onclick = function() {
+    document.getElementById("btn-resume").onclick = togglePause;
+    document.getElementById("btn-start").onclick = startGame;
+    document.getElementById("btn-shuffle").onclick = function () {
         if (!isGameStarted || isPaused) return;
         shuffleBoard();
     };
-    controlPanel.appendChild(btnShuffle);
-
-    let btnHint = document.createElement("button");
-    btnHint.innerText = "Gợi Ý";
-    styleBtn(btnHint);
-    btnHint.onclick = function() {
-        alert("Tính năng Gợi Ý đang được phát triển!");
+    document.getElementById("btn-hint").onclick = function () {
     };
-    controlPanel.appendChild(btnHint);
-
-    body.insertBefore(controlPanel, game);
-    gameContainer = document.createElement("div");
-    gameContainer.style.position = "relative";
-    gameContainer.style.display = "inline-block";
-
-    let timeContainer = document.createElement("div");
-    timeContainer.style.cssText = "width:100%; height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden; margin-bottom:10px;";
-    timeBar = document.createElement("div");
-    timeBar.style.cssText = "height:100%; width:100%; background:#22c55e; transition:width 0.1s linear;";
-    timeContainer.appendChild(timeBar);
-    gameContainer.appendChild(timeContainer);
-
-    lineCanvas = document.createElement("canvas");
-    lineCanvas.style.cssText = "position:absolute; top:20px; left:0; pointer-events:none; z-index:10;";
-    lineCanvas.width = fullCol * cellWidth;
-    lineCanvas.height = fullRow * cellHeight;
-    gameContainer.appendChild(lineCanvas);
-    body.insertBefore(gameContainer, game);
-    gameContainer.appendChild(game);
-    levelTitleSpan = document.getElementById("level-title");
-    levelDescP = document.getElementById("level-desc");
 }
-
-function styleBtn(elem) {
-    elem.style.cssText = "padding:6px 14px; font-weight:bold; cursor:pointer; margin:0 4px; border-radius:6px; border:1px solid #cbd5e1; background:#fff;";
-}
-
 function initGame(col, row) {
     game.innerHTML = "";
     for (let i = 0; i < row; i++) {
@@ -131,6 +65,13 @@ function initGame(col, row) {
     }
 }
 function initBoard() {
+    if (timeInterval) clearInterval(timeInterval);
+    isGameStarted = false;
+    isPaused = false;
+    firstCell = null;
+    btnPause.innerText = "Tạm Dừng";
+    pauseOverlay.classList.add("hidden");
+    clearCanvas();
     let totalPairs = (row * col) / 2;
     let cards = [];
     for (let i = 0; i < totalPairs; i++) {
@@ -138,7 +79,6 @@ function initBoard() {
         cards.push(pieceId, pieceId);
     }
     cards.sort(() => Math.random() - 0.5);
-
     board = [];
     let idx = 0;
     for (let i = 0; i < fullRow; i++) {
@@ -167,68 +107,41 @@ function render() {
             } else {
                 let img = document.createElement("div");
                 img.className = "card-img";
-                img.style.backgroundImage = "url('resources/pieces" + val + ".png')";
+                img.style.backgroundImage = "url('img/pieces" + val + ".png')";
                 cell.appendChild(img);
             }
         }
     }
 }
 function showStartOverlay() {
-    removeStartOverlay();
-    let overlay = document.createElement("div");
-    overlay.id = "js-start-overlay";
-    overlay.style.cssText = "position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); background:rgba(255,255,255,0.92); border-radius:8px; z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center;";
-    overlay.innerHTML = `
-        <h2 style="color:#1e293b; margin-bottom:8px; font-size:24px;">SẴN SÀNG CHƠI!</h2>
-        <p style="color:#64748b; margin-bottom:20px; font-size:15px;">Bấm nút bên dưới để bắt đầu chơi.</p>
-        <button onclick="startGame()" style="padding:12px 30px; font-weight:bold; font-size:16px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; box-shadow:0 4px 6px -1px rgba(37,99,235,0.3);">BẮT ĐẦU</button>
-    `;
-    gameContainer.appendChild(overlay);
-    game.style.filter = "blur(2px)";
-}
+    startOverlay.classList.remove("hidden");
+    game.classList.remove("blur-heavy");
+    game.classList.add("blur-light");}
 function removeStartOverlay() {
-    let overlay = document.getElementById("js-start-overlay");
-    if (overlay) overlay.remove();
-}
+    startOverlay.classList.add("hidden");
+    game.classList.remove("blur-light");}
 function startGame() {
     isGameStarted = true;
     removeStartOverlay();
-    game.style.filter = "none";
     checkAndAutoShuffle();
-    startTimer();
-}
+    startTimer();}
 function showPauseOverlay() {
-    if (document.getElementById("js-pause-overlay")) return;
-    let overlay = document.createElement("div");
-    overlay.id = "js-pause-overlay";
-    overlay.style.cssText = "position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); background:rgba(255,255,255,0.95); border-radius:8px; z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center;";
-    overlay.innerHTML = `
-        <h2 style="color:#1e293b; margin-bottom:10px;">ĐÃ TẠM DỪNG GAME</h2>
-        <p style="color:#64748b; margin-bottom:15px;">Trò chơi đang dừng. Bấm nút bên dưới để chơi tiếp!</p>
-        <button onclick="togglePause()" style="padding:10px 20px; font-weight:bold; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">Tiếp Tục Chơi</button>
-    `;
-    gameContainer.appendChild(overlay);
-}
+    pauseOverlay.classList.remove("hidden");}
 function removePauseOverlay() {
-    let overlay = document.getElementById("js-pause-overlay");
-    if (overlay) overlay.remove();
-}
+    pauseOverlay.classList.add("hidden");}
 function togglePause() {
     if (!isGameStarted) return;
     isPaused = !isPaused;
     if (isPaused) {
         btnPause.innerText = "Tiếp Tục";
         showPauseOverlay();
-        game.style.filter = "blur(3px)";
+        game.classList.add("blur-heavy");
     } else {
         btnPause.innerText = "Tạm Dừng";
         removePauseOverlay();
-        game.style.filter = "none";
+        game.classList.remove("blur-heavy");
     }
 }
-buildUI();
-initGame(fullCol, fullRow);
-initBoard();
 function drawLine(path) {
     let ctx = lineCanvas.getContext("2d");
     ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
@@ -274,14 +187,7 @@ function onClickCell(r, c) {
                     board[r][c] = 0;
                     firstCell = null;
                     render();
-                    setTimeout(() => {
-                        clearCanvas();
-                        board[r1][c1] = 0;
-                        board[r][c] = 0;
-                        firstCell = null;
-                        render();
-                        checkAndAutoShuffle();
-                    }, 300);
+                    checkAndAutoShuffle();
                 }, 300);
                 return;
             }
@@ -367,10 +273,12 @@ function shuffleBoard() {
         let pos = positions[i];
         board[pos.r][pos.c] = values[i];
     }
-
     render();
 }
-
+function showTip() {
+    tip.classList.add("show");
+    setTimeout(() => tip.classList.remove("show"), 1200);
+}
 function checkAndAutoShuffle() {
     let shuffleCount = 0;
     while (!checkHasPairs()) {
@@ -378,24 +286,13 @@ function checkAndAutoShuffle() {
         shuffleCount++;
         if (shuffleCount > 20) break;
     }
-    if (shuffleCount > 0) {
-        let tip = document.createElement("div");
-        tip.style.cssText = "position:absolute; top:35%; left:50%; transform:translate(-50%,-50%); background:rgba(30,41,59,0.9); color:white; padding:10px 20px; border-radius:8px; font-weight:bold; z-index:30; pointer-events:none; transition:opacity 0.5s;";
-        tip.innerText = "Hết nước đi!";
-        gameContainer.appendChild(tip);
-        setTimeout(() => {
-            tip.style.opacity = "0";
-            setTimeout(() => tip.remove(), 500);
-        }, 1200);
-    }
+    if (shuffleCount > 0) showTip();
 }
 function startTimer() {
     if (timeInterval) clearInterval(timeInterval);
     timeRemaining = gameTime;
-    if (timeBar) {
-        timeBar.style.width = "100%";
-        timeBar.style.backgroundColor = "#22c55e";
-    }
+    timeBar.style.width = "100%";
+    timeBar.style.backgroundColor = "#22c55e";
     timeInterval = setInterval(() => {
         if (isPaused || !isGameStarted) return;
         timeRemaining -= 0.1;
@@ -406,21 +303,24 @@ function startTimer() {
             alert("Hết giờ! Bạn đã thua cuộc.");
             isGameStarted = false;
         }
-        if (timeBar) {
-            if (percentage < 20) {
-                timeBar.style.backgroundColor = "#ef4444";
-            }
-            timeBar.style.width = percentage + "%";
+        if (percentage < 20) {
+            timeBar.style.backgroundColor = "#ef4444";
         }
+        timeBar.style.width = percentage + "%";
     }, 100);
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
     if (selectedLvl !== 1) {
-        alert("Level " + selectedLvl + " đang được phát triển! Trở về Level 1.");
+        alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
     }
     currentLevel = selectedLvl;
+    levelTitleSpan.innerText = "Level " + currentLevel;
+    levelDescP.innerText = levelDescriptions[currentLevel];
     initBoard();
 }
+setupUI();
+initGame(fullCol, fullRow);
+initBoard();
