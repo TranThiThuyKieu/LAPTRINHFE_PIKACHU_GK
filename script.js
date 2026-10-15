@@ -1,369 +1,426 @@
-document.addEventListener("DOMContentLoaded", function() {
-    const btnBatDau = document.getElementById("btn-bat-dau");
-    const manHinhBatDau = document.getElementById("man-hinh-bat-dau");
-    const manHinhChonLevel = document.getElementById("man-hinh-chon-level");
-    const manHinhGame = document.getElementById("man-hinh-game");
-    const pikachuBoard = document.getElementById("pikachu-board");
-    const lineCanvas = document.getElementById("line-canvas");
-    const levelItems = document.querySelectorAll(".level-item");
-    const diemElement = document.getElementById("diem-so");
-    const kyLucElement = document.getElementById("ky-luc");
-    const btnChoiLai = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
-        .find(btn => btn.textContent.trim() === 'Chơi Lại');
-    const btnCheDo = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
-        .find(btn => btn.textContent.includes('Chế độ:'));
-    const btnTamDung = Array.from(document.querySelectorAll('.cot-dieu-khien .nut-dieu-khien'))
-        .find(btn => btn.textContent.trim() === 'Tạm Dừng' || btn.textContent.trim() === 'Tiếp Tục');
-    const hang = 9;
-    const cot = 16;
-    const full_hang = hang + 2;
-    const full_cot = cot + 2;
-    const card_width = 38;
-    const card_height = 42;
-    const max_pieces = 36;
-    const game_time = 240;
-    let board = [];
-    let selectedCard = null;
-    let timeInterval = null;
-    let timeRemaining = game_time;
-    let remainingPairs = (hang * cot) / 2;
-    let isProcessing = false;
-    let hintTimer = null;
-    let isPaused = false;
-    let currentScore = 0;
-    let highScore = parseInt(localStorage.getItem("pikachu_high_score")) || 0;
-    if (btnBatDau) {
-        btnBatDau.addEventListener("click", function() {
-            manHinhBatDau.style.display = "none";
-            manHinhChonLevel.style.display = "flex";
-        });
+var row = 9;
+var col = 16;
+var fullRow = row + 2;
+var fullCol = col + 2;
+var cellWidth = 38;
+var cellHeight = 42;
+var maxPieces = 36;
+var currentLevel = 1;
+var game = document.getElementById("game");
+var board = [];
+var isPaused = false;
+var isGameStarted = false;
+var gameTime = 240;
+var timeRemaining = gameTime;
+var timeInterval = null;
+var firstCell = null;
+var levelDescriptions = {
+    1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
+    2: "..",
+    3: "..",
+    4: "..",
+    5: "..",
+    6: "..",
+    7: "..",
+    8: "..",
+    9: ".."
+};
+var firstCell = null;
+var lineCanvas, timeBar, btnPause, levelTitleSpan, levelDescP, levelSelect, gameContainer;
+function buildUI() {
+    let body = document.body;
+    let header = document.createElement("div");
+    header.style.marginBottom = "15px";
+    header.innerHTML = `
+        <h1 style="color:#2563eb; margin:0 0 5px 0;">GAME PIKACHU</h1>
+        <h3 style="margin:0; color:#475569;">
+            Màn chơi: <span id="level-title" style="color:#2563eb;">Level 1</span>
+        </h3>
+        <p id="level-desc" style="margin:5px 0 0 0; color:#64748b; font-size:14px; font-style:italic;">
+            ${levelDescriptions[1]}
+        </p>
+    `;
+    body.insertBefore(header, game);
+
+    let controlPanel = document.createElement("div");
+    controlPanel.style.marginBottom = "15px";
+
+    let label = document.createElement("label");
+    label.innerHTML = "<b>Level:</b> ";
+    controlPanel.appendChild(label);
+    levelSelect = document.createElement("select");
+    styleBtn(levelSelect);
+    for (let i = 1; i <= 9; i++) {
+        let opt = document.createElement("option");
+        opt.value = i;
+        opt.innerText = "Level " + i;
+        levelSelect.appendChild(opt);
     }
-    if (btnChoiLai) {
-        btnChoiLai.addEventListener('click', function() {
-            if (manHinhGame.style.display !== 'none') {
-                if (timeInterval) clearInterval(timeInterval);
-                clearCanvas();
-                if (isPaused && btnTamDung) {
-                    isPaused = false;
-                    btnTamDung.textContent = 'Tạm Dừng';
-                    pikachuBoard.style.pointerEvents = 'auto';
-                    pikachuBoard.style.opacity = '1';
-                }
-                initLevel1();
-            }});
+    levelSelect.onchange = changeLevel;
+    controlPanel.appendChild(levelSelect);
+
+    let btnRestart = document.createElement("button");
+    btnRestart.innerText = "Chơi Lại";
+    styleBtn(btnRestart);
+    btnRestart.onclick = initBoard;
+    controlPanel.appendChild(btnRestart);
+
+    btnPause = document.createElement("button");
+    btnPause.innerText = "Tạm Dừng";
+    styleBtn(btnPause);
+    btnPause.onclick = togglePause;
+    controlPanel.appendChild(btnPause);
+
+    let btnShuffle = document.createElement("button");
+    btnShuffle.innerText = "Đổi Vị Trí";
+    styleBtn(btnShuffle);
+    controlPanel.appendChild(btnShuffle);
+    btnShuffle.onclick = function() {
+        if (!isGameStarted || isPaused) return;
+        shuffleBoard();
+    };
+    controlPanel.appendChild(btnShuffle);
+
+    let btnHint = document.createElement("button");
+    btnHint.innerText = "Gợi Ý";
+    styleBtn(btnHint);
+    btnHint.onclick = function() {
+        alert("Tính năng Gợi Ý đang được phát triển!");
+    };
+    controlPanel.appendChild(btnHint);
+
+    body.insertBefore(controlPanel, game);
+    gameContainer = document.createElement("div");
+    gameContainer.style.position = "relative";
+    gameContainer.style.display = "inline-block";
+
+    let timeContainer = document.createElement("div");
+    timeContainer.style.cssText = "width:100%; height:10px; background:#e2e8f0; border-radius:5px; overflow:hidden; margin-bottom:10px;";
+    timeBar = document.createElement("div");
+    timeBar.style.cssText = "height:100%; width:100%; background:#22c55e; transition:width 0.1s linear;";
+    timeContainer.appendChild(timeBar);
+    gameContainer.appendChild(timeContainer);
+
+    lineCanvas = document.createElement("canvas");
+    lineCanvas.style.cssText = "position:absolute; top:20px; left:0; pointer-events:none; z-index:10;";
+    lineCanvas.width = fullCol * cellWidth;
+    lineCanvas.height = fullRow * cellHeight;
+    gameContainer.appendChild(lineCanvas);
+    body.insertBefore(gameContainer, game);
+    gameContainer.appendChild(game);
+    levelTitleSpan = document.getElementById("level-title");
+    levelDescP = document.getElementById("level-desc");
+}
+
+function styleBtn(elem) {
+    elem.style.cssText = "padding:6px 14px; font-weight:bold; cursor:pointer; margin:0 4px; border-radius:6px; border:1px solid #cbd5e1; background:#fff;";
+}
+
+function initGame(col, row) {
+    game.innerHTML = "";
+    for (let i = 0; i < row; i++) {
+        let tr = document.createElement("tr");
+        for (let j = 0; j < col; j++) {
+            let td = document.createElement("td");
+            td.id = "cell_" + i + "_" + j;
+            td.classList.add("cell");
+            td.onclick = () => onClickCell(i, j);
+            tr.appendChild(td);
+        }
+        game.appendChild(tr);
     }
-    if (btnCheDo) {
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            document.body.classList.add('dark-mode');
-            btnCheDo.textContent = 'Chế độ: Tối';
-        } else {
-            btnCheDo.textContent = 'Chế độ: Sáng';}
-        btnCheDo.addEventListener('click', function() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            btnCheDo.textContent = isDark ? 'Chế độ: Tối' : 'Chế độ: Sáng';
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
+}
+function initBoard() {
+    let totalPairs = (row * col) / 2;
+    let cards = [];
+    for (let i = 0; i < totalPairs; i++) {
+        let pieceId = Math.floor(Math.random() * maxPieces) + 1;
+        cards.push(pieceId, pieceId);
     }
-    if (btnTamDung) {
-        btnTamDung.addEventListener('click', function() {
-            if (manHinhGame.style.display === 'none') return;
-            isPaused = !isPaused;
-            if (isPaused) {
-                if (timeInterval) clearInterval(timeInterval);
-                clearTimeout(hintTimer);
-                clearHintHighlight();
-                btnTamDung.textContent = 'Tiếp Tục';
-                pikachuBoard.style.pointerEvents = 'none';
-                pikachuBoard.style.opacity = '0.4';
+    cards.sort(() => Math.random() - 0.5);
+
+    board = [];
+    let idx = 0;
+    for (let i = 0; i < fullRow; i++) {
+        let rowData = [];
+        for (let j = 0; j < fullCol; j++) {
+            if (i === 0 || i === fullRow - 1 || j === 0 || j === fullCol - 1) {
+                rowData.push(0);
             } else {
-                btnTamDung.textContent = 'Tạm Dừng';
-                pikachuBoard.style.pointerEvents = 'auto';
-                pikachuBoard.style.opacity = '1';
-                resumeTimer();
-                resetHintTimer();
+                rowData.push(cards[idx++]);
             }
-        });
+        }
+        board.push(rowData);
     }
-    if (kyLucElement) {kyLucElement.textContent = highScore;}
-    levelItems.forEach(function(item) {
-        item.addEventListener("click", function() {
-            const levelTitle = this.querySelector(".level-title").innerText;
-            levelItems.forEach(lvl => lvl.style.borderColor = "#eaebef");
-            this.style.borderColor = "#3b82f6";
-            if (levelTitle === "Level 1") {
-                manHinhChonLevel.style.display = "none";
-                manHinhGame.style.display = "flex";
-                initLevel1();
+    render();
+    showStartOverlay();
+}
+function render() {
+    for (let i = 0; i < fullRow; i++) {
+        for (let j = 0; j < fullCol; j++) {
+            let cell = document.getElementById("cell_" + i + "_" + j);
+            let val = board[i][j];
+            cell.className = "cell";
+            cell.innerHTML = "";
+            if (val === 0) {
+                cell.classList.add("empty");
+            } else {
+                let img = document.createElement("div");
+                img.className = "card-img";
+                img.style.backgroundImage = "url('resources/pieces" + val + ".png')";
+                cell.appendChild(img);
             }
-        });
-    });
-    function initLevel1() {
-        pikachuBoard.innerHTML = '';
-        selectedCard = null;
-        isProcessing = false;
-        resetScore();
-        isPaused = false;
-        if (btnTamDung) btnTamDung.textContent = 'Tạm Dừng';
-        pikachuBoard.style.pointerEvents = 'auto';
-        pikachuBoard.style.opacity = '1';
-        remainingPairs = (hang * cot) / 2;
-        lineCanvas.width = full_cot * card_width;
-        lineCanvas.height = full_hang * card_height;
-        let cards = [];
-        for (let i = 0; i < remainingPairs; i++) {
-            const pieceId = Math.floor(Math.random() * max_pieces) + 1;
-            cards.push(pieceId, pieceId);}
-        cards.sort(() => Math.random() - 0.5);
-        board = Array.from({ length: full_hang }, () => Array(full_cot).fill(0));
-        let cardIdx = 0;
-        for (let r = 1; r <= hang; r++) {
-            for (let c = 1; c <= cot; c++) {
-                board[r][c] = cards[cardIdx++];}}
-        renderBoard();
-        startTimer();
-        checkAndShuffleIfNoMoves();
-        resetHintTimer();}
-    function renderBoard() {
-        pikachuBoard.innerHTML = '';
-        for (let r = 0; r < full_hang; r++) {
-            for (let c = 0; c < full_cot; c++) {
-                const card = document.createElement("div");
-                card.dataset.row = r;
-                card.dataset.col = c;
-                if (board[r][c] === 0) {
-                    card.className = "pokemon-card empty-cell";
-                } else {
-                    card.className = "pokemon-card";
-                    card.style.backgroundImage = `url('resources/pieces${board[r][c]}.png')`;
-                    card.addEventListener("click", () => handleCardClick(r, c, card));}
-                pikachuBoard.appendChild(card);}}}
-    function handleCardClick(r, c, element) {
-        if (isProcessing || isPaused || board[r][c] === 0) return;
-        if (!selectedCard) {
-            selectedCard = { r, c, element };
-            element.classList.add("active");
-        } else if (selectedCard.r === r && selectedCard.c === c) {
-            element.classList.remove("active");
-            selectedCard = null;
-        } else {
-            const prevR = selectedCard.r;
-            const prevC = selectedCard.c;
-            if (board[prevR][prevC] === board[r][c]) {
-                const path = canConnect(prevR, prevC, r, c);
-                if (path) {
-                    isProcessing = true;
-                    element.classList.add("active");
-                    drawLine(path);
+        }
+    }
+}
+function showStartOverlay() {
+    removeStartOverlay();
+    let overlay = document.createElement("div");
+    overlay.id = "js-start-overlay";
+    overlay.style.cssText = "position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); background:rgba(255,255,255,0.92); border-radius:8px; z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center;";
+    overlay.innerHTML = `
+        <h2 style="color:#1e293b; margin-bottom:8px; font-size:24px;">SẴN SÀNG CHƠI!</h2>
+        <p style="color:#64748b; margin-bottom:20px; font-size:15px;">Bấm nút bên dưới để bắt đầu chơi.</p>
+        <button onclick="startGame()" style="padding:12px 30px; font-weight:bold; font-size:16px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; box-shadow:0 4px 6px -1px rgba(37,99,235,0.3);">BẮT ĐẦU</button>
+    `;
+    gameContainer.appendChild(overlay);
+    game.style.filter = "blur(2px)";
+}
+function removeStartOverlay() {
+    let overlay = document.getElementById("js-start-overlay");
+    if (overlay) overlay.remove();
+}
+function startGame() {
+    isGameStarted = true;
+    removeStartOverlay();
+    game.style.filter = "none";
+    checkAndAutoShuffle();
+    startTimer();
+}
+function showPauseOverlay() {
+    if (document.getElementById("js-pause-overlay")) return;
+    let overlay = document.createElement("div");
+    overlay.id = "js-pause-overlay";
+    overlay.style.cssText = "position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); background:rgba(255,255,255,0.95); border-radius:8px; z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center;";
+    overlay.innerHTML = `
+        <h2 style="color:#1e293b; margin-bottom:10px;">ĐÃ TẠM DỪNG GAME</h2>
+        <p style="color:#64748b; margin-bottom:15px;">Trò chơi đang dừng. Bấm nút bên dưới để chơi tiếp!</p>
+        <button onclick="togglePause()" style="padding:10px 20px; font-weight:bold; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">Tiếp Tục Chơi</button>
+    `;
+    gameContainer.appendChild(overlay);
+}
+function removePauseOverlay() {
+    let overlay = document.getElementById("js-pause-overlay");
+    if (overlay) overlay.remove();
+}
+function togglePause() {
+    if (!isGameStarted) return;
+    isPaused = !isPaused;
+    if (isPaused) {
+        btnPause.innerText = "Tiếp Tục";
+        showPauseOverlay();
+        game.style.filter = "blur(3px)";
+    } else {
+        btnPause.innerText = "Tạm Dừng";
+        removePauseOverlay();
+        game.style.filter = "none";
+    }
+}
+buildUI();
+initGame(fullCol, fullRow);
+initBoard();
+function drawLine(path) {
+    let ctx = lineCanvas.getContext("2d");
+    ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+    ctx.beginPath();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#2563eb";
+    ctx.shadowColor = "#60a5fa";
+    ctx.shadowBlur = 6;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    for (let i = 0; i < path.length; i++) {
+        let x = path[i].c * cellWidth + cellWidth / 2;
+        let y = path[i].r * cellHeight + cellHeight / 2;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+}
+function clearCanvas() {
+    let ctx = lineCanvas.getContext("2d");
+    ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
+}
+function onClickCell(r, c) {
+    if (!isGameStarted || isPaused || board[r][c] === 0) return;
+    let currentCell = document.getElementById("cell_" + r + "_" + c);
+    if (!firstCell) {
+        firstCell = { r, c };
+        currentCell.classList.add("selected");
+    } else if (firstCell.r === r && firstCell.c === c) {
+        firstCell = null;
+        currentCell.classList.remove("selected");
+    } else {
+        let r1 = firstCell.r;
+        let c1 = firstCell.c;
+        if (board[r1][c1] === board[r][c]) {
+            let path = canConnect(r1, c1, r, c);
+            if (path) {
+                currentCell.classList.add("selected");
+                drawLine(path);
+                setTimeout(() => {
+                    clearCanvas();
+                    board[r1][c1] = 0;
+                    board[r][c] = 0;
+                    firstCell = null;
+                    render();
                     setTimeout(() => {
                         clearCanvas();
-                        board[prevR][prevC] = 0;
+                        board[r1][c1] = 0;
                         board[r][c] = 0;
-                        selectedCard.element.className = "pokemon-card empty-cell";
-                        selectedCard.element.style.backgroundImage = "";
-                        element.className = "pokemon-card empty-cell";
-                        element.style.backgroundImage = "";
-                        selectedCard = null;
-                        isProcessing = false;
-                        remainingPairs--;
-                        addScore(10);
-                        if (remainingPairs === 0) {
-                            gameWin();
-                        } else {
-                            checkAndShuffleIfNoMoves();
-                            resetHintTimer();}}, 300);
-                    return;}
+                        firstCell = null;
+                        render();
+                        checkAndAutoShuffle();
+                    }, 300);
+                }, 300);
+                return;
             }
-            selectedCard.element.classList.remove("active");
-            selectedCard = { r, c, element };
-            element.classList.add("active");}}
-    function canConnect(r1, c1, r2, c2) {
-        const dirs = [
-            { dr: -1, dc: 0 },
-            { dr: 1, dc: 0 },
-            { dr: 0, dc: -1 },
-            { dr: 0, dc: 1 }];
-        let queue = [{ r: r1, c: c1, dir: -1, turns: 0, path: [{ r: r1, c: c1 }] }];
-        let visited = Array.from({ length: full_hang }, () =>
-            Array.from({ length: full_cot }, () => Array(4).fill(Infinity)));
-        while (queue.length > 0) {
-            const { r, c, dir, turns, path } = queue.shift();
-            if (r === r2 && c === c2) return path;
-            for (let d = 0; d < 4; d++) {
-                const nr = r + dirs[d].dr;
-                const nc = c + dirs[d].dc;
-                if (nr >= 0 && nr < full_hang && nc >= 0 && nc < full_cot) {
-                    const newTurns = (dir === -1 || dir === d) ? turns : turns + 1;
-                    if (newTurns <= 2) {
-                        if (board[nr][nc] === 0 || (nr === r2 && nc === c2)) {
-                            if (newTurns < visited[nr][nc][d]) {
-                                visited[nr][nc][d] = newTurns;
-                                queue.push({r: nr, c: nc, dir: d, turns: newTurns, path: [...path, { r: nr, c: nc }]});}}
+        }
+        document.getElementById("cell_" + firstCell.r + "_" + firstCell.c).classList.remove("selected");
+        firstCell = { r, c };
+        currentCell.classList.add("selected");
+    }
+}
+function canConnect(r1, c1, r2, c2) {
+    let dirs = [
+        { dr: -1, dc: 0 },
+        { dr: 1, dc: 0 },
+        { dr: 0, dc: -1 },
+        { dr: 0, dc: 1 }
+    ];
+    let queue = [{ r: r1, c: c1, dir: -1, turns: 0, path: [{ r: r1, c: c1 }] }];
+    let visited = Array.from({ length: fullRow }, () =>
+        Array.from({ length: fullCol }, () => Array(4).fill(Infinity))
+    );
+    while (queue.length > 0) {
+        let curr = queue.shift();
+        if (curr.r === r2 && curr.c === c2) return curr.path;
+        for (let d = 0; d < 4; d++) {
+            let nr = curr.r + dirs[d].dr;
+            let nc = curr.c + dirs[d].dc;
+            if (nr >= 0 && nr < fullRow && nc >= 0 && nc < fullCol) {
+                let newTurns = (curr.dir === -1 || curr.dir === d) ? curr.turns : curr.turns + 1;
+                if (newTurns <= 2) {
+                    if (board[nr][nc] === 0 || (nr === r2 && nc === c2)) {
+                        if (newTurns < visited[nr][nc][d]) {
+                            visited[nr][nc][d] = newTurns;
+                            queue.push({
+                                r: nr,
+                                c: nc,
+                                dir: d,
+                                turns: newTurns,
+                                path: [...curr.path, { r: nr, c: nc }]
+                            });
+                        }
                     }
-                }}}
-        return null;}
-    function drawLine(path) {
-        const ctx = lineCanvas.getContext("2d");
-        ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
-        ctx.beginPath();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = "#2563eb";
-        ctx.shadowColor = "#60a5fa";
-        ctx.shadowBlur = 8;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        path.forEach((pt, index) => {
-            const x = pt.c * card_width + card_width / 2;
-            const y = pt.r * card_height + card_height / 2;
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }});
-        ctx.stroke();}
-    function clearCanvas() {
-        const ctx = lineCanvas.getContext("2d");
-        ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);}
-    function checkAndShuffleIfNoMoves() {
-        if (!hasAvailableMoves()) {
-            shuffleBoard();
-        }}
-    function hasAvailableMoves() {
-        let activeCards = [];
-        for (let r = 1; r <= hang; r++) {
-            for (let c = 1; c <= cot; c++) {
-                if (board[r][c] !== 0) {
-                    activeCards.push({ r, c, val: board[r][c] });}}
+                }
+            }
         }
-        for (let i = 0; i < activeCards.length; i++) {
-            for (let j = i + 1; j < activeCards.length; j++) {
-                if (activeCards[i].val === activeCards[j].val) {
-                    if (canConnect(activeCards[i].r, activeCards[i].c, activeCards[j].r, activeCards[j].c)) {
-                        return true;}}}
+    }
+    return null;
+}
+function checkHasPairs() {
+    let activeCells = [];
+    for (let i = 1; i <= row; i++) {
+        for (let j = 1; j <= col; j++) {
+            if (board[i][j] !== 0) {
+                activeCells.push({ r: i, c: j, val: board[i][j] });
+            }
         }
-        return false;}
-    function shuffleBoard() {
-        let currentValues = [];
-        for (let r = 1; r <= hang; r++) {
-            for (let c = 1; c <= cot; c++) {
-                if (board[r][c] !== 0) {
-                    currentValues.push(board[r][c]);}}
-        }do {
-            currentValues.sort(() => Math.random() - 0.5);
-            let idx = 0;
-            for (let r = 1; r <= hang; r++) {
-                for (let c = 1; c <= cot; c++) {
-                    if (board[r][c] !== 0) {
-                        board[r][c] = currentValues[idx++];
-                    }
-                }}
-        } while (!hasAvailableMoves() && currentValues.length > 0);
-        renderBoard();
-        resetHintTimer();}
-    function startTimer() {
-        if (timeInterval) clearInterval(timeInterval);
-        timeRemaining = game_time;
-        const timeBar = document.getElementById("time-bar");
-        timeInterval = setInterval(() => {
-            timeRemaining -= 0.1;
-            let percentage = (timeRemaining / game_time) * 100;
-            if (timeRemaining <= 0) {
-                timeRemaining = 0;
-                percentage = 0;
-                clearInterval(timeInterval);
-                gameOver();}
+    }
+    if (activeCells.length === 0) return true;
+    for (let i = 0; i < activeCells.length; i++) {
+        for (let j = i + 1; j < activeCells.length; j++) {
+            if (activeCells[i].val === activeCells[j].val) {
+                if (canConnect(activeCells[i].r, activeCells[i].c, activeCells[j].r, activeCells[j].c)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+function shuffleBoard() {
+    let positions = [];
+    let values = [];
+    for (let i = 1; i <= row; i++) {
+        for (let j = 1; j <= col; j++) {
+            if (board[i][j] !== 0) {
+                positions.push({ r: i, c: j });
+                values.push(board[i][j]);
+            }
+        }
+    }
+    if (values.length === 0) return;
+    values.sort(() => Math.random() - 0.5);
+    for (let i = 0; i < positions.length; i++) {
+        let pos = positions[i];
+        board[pos.r][pos.c] = values[i];
+    }
+
+    render();
+}
+
+function checkAndAutoShuffle() {
+    let shuffleCount = 0;
+    while (!checkHasPairs()) {
+        shuffleBoard();
+        shuffleCount++;
+        if (shuffleCount > 20) break;
+    }
+    if (shuffleCount > 0) {
+        let tip = document.createElement("div");
+        tip.style.cssText = "position:absolute; top:35%; left:50%; transform:translate(-50%,-50%); background:rgba(30,41,59,0.9); color:white; padding:10px 20px; border-radius:8px; font-weight:bold; z-index:30; pointer-events:none; transition:opacity 0.5s;";
+        tip.innerText = "Hết nước đi!";
+        gameContainer.appendChild(tip);
+        setTimeout(() => {
+            tip.style.opacity = "0";
+            setTimeout(() => tip.remove(), 500);
+        }, 1200);
+    }
+}
+function startTimer() {
+    if (timeInterval) clearInterval(timeInterval);
+    timeRemaining = gameTime;
+    if (timeBar) {
+        timeBar.style.width = "100%";
+        timeBar.style.backgroundColor = "#22c55e";
+    }
+    timeInterval = setInterval(() => {
+        if (isPaused || !isGameStarted) return;
+        timeRemaining -= 0.1;
+        let percentage = (timeRemaining / gameTime) * 100;
+        if (percentage <= 0) {
+            percentage = 0;
+            clearInterval(timeInterval);
+            alert("Hết giờ! Bạn đã thua cuộc.");
+            isGameStarted = false;
+        }
+        if (timeBar) {
+            if (percentage < 20) {
+                timeBar.style.backgroundColor = "#ef4444";
+            }
             timeBar.style.width = percentage + "%";
-        }, 100);}
-    function resumeTimer() {
-        if (timeInterval) clearInterval(timeInterval);
-        const timeBar = document.getElementById("time-bar");
-        timeInterval = setInterval(() => {
-            timeRemaining -= 0.1;
-            let percentage = (timeRemaining / game_time) * 100;
-            if (timeRemaining <= 0) {
-                timeRemaining = 0;
-                percentage = 0;
-                clearInterval(timeInterval);
-                gameOver();}
-            timeBar.style.width = percentage + "%";
-        }, 100);
-    }
-    function gameOver() {
-        clearTimeout(hintTimer);
-        clearHintHighlight();
-        showModal("Thua cuộc!", "Đã hết thời gian. Bạn có muốn chơi lại?", "Chơi Lại", () => {
-            closeModal();
-            initLevel1();
-        });}
-    function gameWin() {
-        clearInterval(timeInterval);
-        clearTimeout(hintTimer);
-        clearHintHighlight();
-        showModal("Chiến Thắng!", "Chúc mừng bạn đã hoàn thành!", "Chơi Level tiếp", () => {
-            closeModal();
-            manHinhGame.style.display = "none";
-            manHinhChonLevel.style.display = "flex";
-        });
-    }
-    function showModal(title, msg, btnText, onAction) {
-        closeModal();
-        const modalHtml = `
-            <div class="game-modal" id="game-modal">
-                <div class="modal-content">
-                    <h2>${title}</h2>
-                    <p>${msg}</p>
-                    <button class="btn-modal" id="btn-modal-action">${btnText}</button>
-                </div></div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        document.getElementById("btn-modal-action").addEventListener("click", onAction);}
-    function closeModal() {
-        const modal = document.getElementById("game-modal");
-        if (modal) modal.remove();}
-    function resetHintTimer() {
-        clearTimeout(hintTimer);
-        clearHintHighlight();
-        hintTimer = setTimeout(() => {showHint();}, 10000);
-    }
-    function findPair() {
-        let activeCards = [];
-        for (let r = 1; r <= hang; r++) {
-            for (let c = 1; c <= cot; c++) {
-                if (board[r][c] !== 0) {
-                    activeCards.push({ r, c, val: board[r][c] });}}
         }
-        for (let i = 0; i < activeCards.length; i++) {
-            for (let j = i + 1; j < activeCards.length; j++) {
-                if (activeCards[i].val === activeCards[j].val) {
-                    if (canConnect(activeCards[i].r, activeCards[i].c, activeCards[j].r, activeCards[j].c)) {
-                        return [activeCards[i], activeCards[j]];}}}
-        }
-        return null;}
-    function showHint() {
-        const pair = findPair();
-        if (!pair) return;
-        if (selectedCard) {
-            selectedCard.element.classList.remove("active");
-            selectedCard = null;
-        }
-        const [card1, card2] = pair;
-        const el1 = document.querySelector(`.pokemon-card[data-row="${card1.r}"][data-col="${card1.c}"]`);
-        const el2 = document.querySelector(`.pokemon-card[data-row="${card2.r}"][data-col="${card2.c}"]`);
-        if (el1 && el2) {
-            el1.classList.add("hint");
-            el2.classList.add("hint");}}
-    function clearHintHighlight() {
-        const hintCards = document.querySelectorAll(".pokemon-card.hint");
-        hintCards.forEach(card => card.classList.remove("hint"));
+    }, 100);
+}
+function changeLevel() {
+    let selectedLvl = parseInt(levelSelect.value);
+    if (selectedLvl !== 1) {
+        alert("Level " + selectedLvl + " đang được phát triển! Trở về Level 1.");
+        levelSelect.value = currentLevel;
+        return;
     }
-    function addScore(points) {
-        currentScore += points;
-        if (diemElement) diemElement.textContent = currentScore;
-        if (currentScore > highScore) {
-            highScore = currentScore;
-            if (kyLucElement) kyLucElement.textContent = highScore;
-            localStorage.setItem("pikachu_high_score", highScore);}}
-    function resetScore() {
-        currentScore = 0;
-        if (diemElement) diemElement.textContent = 0;}
-});
+    currentLevel = selectedLvl;
+    initBoard();
+}
