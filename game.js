@@ -13,6 +13,8 @@ var gameTime = 240;
 var timeRemaining = gameTime;
 var timeInterval = null;
 var firstCell = null;
+var hintTimer = null;
+var currentHintPair = null;
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
     2: "..",
@@ -48,6 +50,8 @@ function setupUI() {
         shuffleBoard();
     };
     document.getElementById("btn-hint").onclick = function () {
+        if (!isGameStarted || isPaused) return;
+        showHint();
     };
 }
 function initGame(col, row) {
@@ -66,6 +70,7 @@ function initGame(col, row) {
 }
 function initBoard() {
     if (timeInterval) clearInterval(timeInterval);
+    clearTimeout(hintTimer);
     isGameStarted = false;
     isPaused = false;
     firstCell = null;
@@ -101,6 +106,11 @@ function render() {
             let cell = document.getElementById("cell_" + i + "_" + j);
             let val = board[i][j];
             cell.className = "cell";
+            if (currentHintPair &&
+                ((i === currentHintPair.p1.r && j === currentHintPair.p1.c) ||
+                    (i === currentHintPair.p2.r && j === currentHintPair.p2.c))) {
+                cell.classList.add("hint");
+            }
             cell.innerHTML = "";
             if (val === 0) {
                 cell.classList.add("empty");
@@ -124,7 +134,8 @@ function startGame() {
     isGameStarted = true;
     removeStartOverlay();
     checkAndAutoShuffle();
-    startTimer();}
+    startTimer();
+    startHintTimer();}
 function showPauseOverlay() {
     pauseOverlay.classList.remove("hidden");}
 function removePauseOverlay() {
@@ -136,10 +147,12 @@ function togglePause() {
         btnPause.innerText = "Tiếp Tục";
         showPauseOverlay();
         game.classList.add("blur-heavy");
+        clearTimeout(hintTimer);
     } else {
         btnPause.innerText = "Tạm Dừng";
         removePauseOverlay();
         game.classList.remove("blur-heavy");
+        startHintTimer();
     }
 }
 function drawLine(path) {
@@ -164,6 +177,53 @@ function clearCanvas() {
     let ctx = lineCanvas.getContext("2d");
     ctx.clearRect(0, 0, lineCanvas.width, lineCanvas.height);
 }
+function startHintTimer() {
+    clearTimeout(hintTimer);
+    if (!isGameStarted || isPaused) return;
+    hintTimer = setTimeout(() => {
+        showHint();
+    }, 10000);
+}
+function clearHint() {
+    if (currentHintPair) {
+        let cell1 = document.getElementById("cell_" + currentHintPair.p1.r + "_" + currentHintPair.p1.c);
+        let cell2 = document.getElementById("cell_" + currentHintPair.p2.r + "_" + currentHintPair.p2.c);
+        if (cell1) cell1.classList.remove("hint");
+        if (cell2) cell2.classList.remove("hint");
+        currentHintPair = null;
+    }
+}
+function findHintPair() {
+    let activeCells = [];
+    for (let i = 1; i <= row; i++) {
+        for (let j = 1; j <= col; j++) {
+            if (board[i][j] !== 0) {
+                activeCells.push({ r: i, c: j, val: board[i][j] });
+            }
+        }
+    }
+    for (let i = 0; i < activeCells.length; i++) {
+        for (let j = i + 1; j < activeCells.length; j++) {
+            if (activeCells[i].val === activeCells[j].val) {
+                if (canConnect(activeCells[i].r, activeCells[i].c, activeCells[j].r, activeCells[j].c)) {
+                    return { p1: activeCells[i], p2: activeCells[j] };
+                }
+            }
+        }
+    }
+    return null;
+}
+function showHint() {
+    if (currentHintPair) return;
+    let pair = findHintPair();
+    if (pair) {
+        currentHintPair = pair;
+        let cell1 = document.getElementById("cell_" + pair.p1.r + "_" + pair.p1.c);
+        let cell2 = document.getElementById("cell_" + pair.p2.r + "_" + pair.p2.c);
+        if (cell1) cell1.classList.add("hint");
+        if (cell2) cell2.classList.add("hint");
+    }
+}
 function onClickCell(r, c) {
     if (!isGameStarted || isPaused || board[r][c] === 0) return;
     let currentCell = document.getElementById("cell_" + r + "_" + c);
@@ -186,8 +246,10 @@ function onClickCell(r, c) {
                     board[r1][c1] = 0;
                     board[r][c] = 0;
                     firstCell = null;
+                    clearHint();
                     render();
                     checkAndAutoShuffle();
+                    startHintTimer();
                 }, 300);
                 return;
             }
@@ -257,6 +319,7 @@ function checkHasPairs() {
     return false;
 }
 function shuffleBoard() {
+    clearHint();
     let positions = [];
     let values = [];
     for (let i = 1; i <= row; i++) {
