@@ -17,7 +17,7 @@ var hintTimer = null;
 var currentHintPair = null;
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
-    2: "..",
+    2: "Rơi xuống: Các khối phía trên rơi xuống lấp chỗ trống khi bị xóa.",
     3: "..",
     4: "..",
     5: "..",
@@ -247,6 +247,7 @@ function onClickCell(r, c) {
                     board[r][c] = 0;
                     firstCell = null;
                     clearHint();
+                    if (currentLevel === 2) applyGravity();
                     render();
                     checkAndAutoShuffle();
                     startHintTimer();
@@ -374,7 +375,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl !== 1) {
+    if (selectedLvl !== 1 && selectedLvl !== 2) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -383,6 +384,17 @@ function changeLevel() {
     levelTitleSpan.innerText = "Level " + currentLevel;
     levelDescP.innerText = levelDescriptions[currentLevel];
     initBoard();
+}
+function applyGravity() {
+    for (let j = 1; j <= col; j++) {
+        let stack = [];
+        for (let i = row; i >= 1; i--) {
+            if (board[i][j] !== 0) stack.push(board[i][j]);
+        }
+        for (let i = row, k = 0; i >= 1; i--, k++) {
+            board[i][j] = k < stack.length ? stack[k] : 0;
+        }
+    }
 }
 setupUI();
 initGame(fullCol, fullRow);
