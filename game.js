@@ -17,11 +17,14 @@ var hintTimer = null;
 var currentHintPair = null;
 var iceCount = 23;
 var slideMoves = [];
+var bubbleBoard = [];
+var bubbleCount = 16;
+var poppedCells = [];
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
     2: "Rơi xuống: Các khối phía trên rơi xuống lấp chỗ trống khi bị xóa.",
     3: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
-    4: "..",
+    4: "Hóa đá: Ô bị hóa đá phải nối 2 lần mới biến mất.",
     5: "..",
     6: "..",
     7: "..",
@@ -100,6 +103,7 @@ function initBoard() {
         board.push(rowData);
     }
     iceBoard = createIceBoard();
+    bubbleBoard = createBubbleBoard();
     render();
     showStartOverlay();
 }
@@ -115,6 +119,8 @@ function render() {
                 cell.classList.add("hint");
             }
             cell.innerHTML = "";
+            if (bubbleBoard[i][j] && val !== 0) cell.classList.add("bubble");
+            if (poppedCells.includes(i + "_" + j)) cell.classList.add("pop");
             if (val === 0) {
                 cell.classList.add("empty");
             } else {
@@ -132,6 +138,7 @@ function render() {
             }
         }
     }slideMoves = [];
+    poppedCells = [];
 }
 function showStartOverlay() {
     startOverlay.classList.remove("hidden");
@@ -253,12 +260,18 @@ function onClickCell(r, c) {
                 drawLine(path);
                 setTimeout(() => {
                     clearCanvas();
-                    board[r1][c1] = 0;
-                    board[r][c] = 0;
                     firstCell = null;
                     clearHint();
+                    let b1 = bubbleBoard[r1][c1];
+                    let b2 = bubbleBoard[r][c];
+                    if (b1) popBubble(r1, c1);
+                    else board[r1][c1] = 0;
+                    if (b2) popBubble(r, c);
+                    else board[r][c] = 0;
+                    if (!b1 && !b2) {
                     if (currentLevel === 2) applyGravity();
                     if (currentLevel === 3) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
+                    }
                     render();
                     checkAndAutoShuffle();
                     startHintTimer();
@@ -386,7 +399,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl !== 1 && selectedLvl !== 2 && selectedLvl !== 3) {
+    if (selectedLvl < 1 || selectedLvl > 4) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -445,6 +458,26 @@ function applyIceSlide(removed) {
             slideMoves.push({ r: e.r, c: e.c, dx: d.dc * cellWidth, dy: d.dr * cellHeight });
             break;
         }
+    }
+}
+function createBubbleBoard() {
+    let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(false));
+    if (currentLevel !== 4) return grid;
+    let n = 0;
+    while (n < bubbleCount) {
+        let r = 1 + Math.floor(Math.random() * row);
+        let c = 1 + Math.floor(Math.random() * col);
+        if (!grid[r][c]) {
+            grid[r][c] = true;
+            n++;
+        }
+    }
+    return grid;
+}
+function popBubble(r, c) {
+    if (bubbleBoard[r][c]) {
+        bubbleBoard[r][c] = false;
+        poppedCells.push(r + "_" + c);
     }
 }
 setupUI();
