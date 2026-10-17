@@ -15,10 +15,12 @@ var timeInterval = null;
 var firstCell = null;
 var hintTimer = null;
 var currentHintPair = null;
+var iceCount = 23;
+var slideMoves = [];
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
     2: "Rơi xuống: Các khối phía trên rơi xuống lấp chỗ trống khi bị xóa.",
-    3: "..",
+    3: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
     4: "..",
     5: "..",
     6: "..",
@@ -97,6 +99,7 @@ function initBoard() {
         }
         board.push(rowData);
     }
+    iceBoard = createIceBoard();
     render();
     showStartOverlay();
 }
@@ -115,13 +118,20 @@ function render() {
             if (val === 0) {
                 cell.classList.add("empty");
             } else {
+                if (iceBoard[i][j]) cell.classList.add("ice");
                 let img = document.createElement("div");
                 img.className = "card-img";
                 img.style.backgroundImage = "url('img/pieces" + val + ".png')";
+                let mv = slideMoves.find(m => m.r === i && m.c === j);
+                if (mv) {
+                    img.style.setProperty("--dx", mv.dx + "px");
+                    img.style.setProperty("--dy", mv.dy + "px");
+                    img.classList.add("slide");
+                }
                 cell.appendChild(img);
             }
         }
-    }
+    }slideMoves = [];
 }
 function showStartOverlay() {
     startOverlay.classList.remove("hidden");
@@ -248,6 +258,7 @@ function onClickCell(r, c) {
                     firstCell = null;
                     clearHint();
                     if (currentLevel === 2) applyGravity();
+                    if (currentLevel === 3) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
                     render();
                     checkAndAutoShuffle();
                     startHintTimer();
@@ -375,7 +386,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl !== 1 && selectedLvl !== 2) {
+    if (selectedLvl !== 1 && selectedLvl !== 2 && selectedLvl !== 3) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -393,6 +404,46 @@ function applyGravity() {
         }
         for (let i = row, k = 0; i >= 1; i--, k++) {
             board[i][j] = k < stack.length ? stack[k] : 0;
+        }
+    }
+}
+function createIceBoard() {
+    let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(false));
+    if (currentLevel !== 3) return grid;
+    let n = 0;
+    while (n < iceCount) {
+        let r = 1 + Math.floor(Math.random() * row);
+        let c = 1 + Math.floor(Math.random() * col);
+        if (!grid[r][c]) {
+            grid[r][c] = true;
+            n++;
+        }
+    }
+    return grid;
+}
+function applyIceSlide(removed) {
+    let order = [
+        { dr: -1, dc: 0 },
+        { dr: 0, dc: -1 },
+        { dr: 0, dc: 1 },
+        { dr: 1, dc: 0 }];
+    let moved = new Set();
+    slideMoves = [];
+    for (const e of removed) {
+        if (board[e.r][e.c] !== 0) continue;
+        for (const d of order) {
+            let nr = e.r + d.dr;
+            let nc = e.c + d.dc;
+            if (nr < 1 || nr > row || nc < 1 || nc > col) continue;
+            if (board[nr][nc] === 0 || !iceBoard[nr][nc]) continue;
+            if (moved.has(nr + "_" + nc)) continue;
+            board[e.r][e.c] = board[nr][nc];
+            iceBoard[e.r][e.c] = true;
+            board[nr][nc] = 0;
+            iceBoard[nr][nc] = false;
+            moved.add(e.r + "_" + e.c);
+            slideMoves.push({ r: e.r, c: e.c, dx: d.dc * cellWidth, dy: d.dr * cellHeight });
+            break;
         }
     }
 }
