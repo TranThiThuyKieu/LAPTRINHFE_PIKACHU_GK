@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Pikachu</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="header">
+    <h1>GAME PIKACHU</h1>
+    <h3>Màn chơi: <span id="level-title">Level 1</span></h3>
+    <p id="level-desc"></p>
+</div>
+<div class="control-panel">
+    <label><b>Level:</b></label>
+    <select id="level-select">
+        <option value="1">Level 1</option>
+        <option value="2">Level 2</option>
+        <option value="3">Level 3</option>
+        <option value="4">Level 4</option>
+        <option value="5">Level 5</option>
+        <option value="6">Level 6</option>
+        <option value="7">Level 7</option>
+        <option value="8">Level 8</option>
+        <option value="9">Level 9</option>
+    </select>
+    <button id="btn-restart">Chơi Lại</button>
+    <button id="btn-pause">Tạm Dừng</button>
+    <button id="btn-shuffle">Đổi Vị Trí</button>
+    <button id="btn-hint">Gợi Ý</button>
+</div>
+<div id="game-container">
+    <div id="time-container">
+        <div id="time-bar"></div>
+    </div>
+    <canvas id="line-canvas"></canvas>
+    <table id="game"></table>
+    <div id="start-overlay" class="overlay hidden">
+        <h2>SẴN SÀNG CHƠI!</h2>
+        <p>Bấm nút bên dưới để bắt đầu chơi.</p>
+        <button id="btn-start" class="btn-primary">BẮT ĐẦU</button>
+    </div>
+    <div id="pause-overlay" class="overlay hidden">
+        <h2>ĐÃ TẠM DỪNG GAME</h2>
+        <p>Trò chơi đang dừng. Bấm nút bên dưới để chơi tiếp!</p>
+        <button id="btn-resume" class="btn-primary">Tiếp Tục Chơi</button>
+    </div>
+    <div id="tip">Hết nước đi!</div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
