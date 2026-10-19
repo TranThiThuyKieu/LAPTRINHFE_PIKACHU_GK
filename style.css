@@ -232,3 +232,28 @@ body {
     75%  { transform: translateX(3px); }
     100% { transform: translateX(0); }
 }
+.cell.t-u { --u: linear-gradient(#ef4444, #ef4444); }
+.cell.t-d { --d: linear-gradient(#ef4444, #ef4444); }
+.cell.t-l { --l: linear-gradient(#ef4444, #ef4444); }
+.cell.t-r { --r: linear-gradient(#ef4444, #ef4444); }
+.cell.trail::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+            var(--u, none),
+            var(--d, none),
+            var(--l, none),
+            var(--r, none);
+    background-size: 4px 50%, 4px 50%, 50% 4px, 50% 4px;
+    background-position: 50% 0, 50% 100%, 0 50%, 100% 50%;
+    background-repeat: no-repeat;
+    filter: drop-shadow(0 0 3px #f87171);
+    pointer-events: none;
+}
+.cell.trail-old::after {
+    opacity: 0.4;
+}

@@ -20,12 +20,15 @@ var slideMoves = [];
 var bubbleBoard = [];
 var bubbleCount = 16;
 var poppedCells = [];
+var trailBoard = [];
+var trailMoves = 2;
+var trailDir = [];
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
     2: "Rơi xuống: Các khối phía trên rơi xuống lấp chỗ trống khi bị xóa.",
     3: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
     4: "Hóa đá: Ô bị hóa đá phải nối 2 lần mới biến mất.",
-    5: "..",
+    5: "Dấu chân: Đường nối vừa ăn để lại dấu, 2 nước tiếp theo không được đi qua.",
     6: "..",
     7: "..",
     8: "..",
@@ -104,6 +107,8 @@ function initBoard() {
     }
     iceBoard = createIceBoard();
     bubbleBoard = createBubbleBoard();
+    trailBoard = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
+    trailDir = Array.from({ length: fullRow }, () => Array(fullCol).fill(""));
     render();
     showStartOverlay();
 }
@@ -113,6 +118,11 @@ function render() {
             let cell = document.getElementById("cell_" + i + "_" + j);
             let val = board[i][j];
             cell.className = "cell";
+            if (trailBoard[i][j] > 0) {
+                cell.classList.add("trail");
+                if (trailBoard[i][j] === 1) cell.classList.add("trail-old");
+                for (const ch of trailDir[i][j]) cell.classList.add("t-" + ch);
+            }
             if (currentHintPair &&
                 ((i === currentHintPair.p1.r && j === currentHintPair.p1.c) ||
                     (i === currentHintPair.p2.r && j === currentHintPair.p2.c))) {
@@ -272,6 +282,7 @@ function onClickCell(r, c) {
                     if (currentLevel === 2) applyGravity();
                     if (currentLevel === 3) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
                     }
+                    if (currentLevel === 5) updateTrails(path);
                     render();
                     checkAndAutoShuffle();
                     startHintTimer();
@@ -304,7 +315,7 @@ function canConnect(r1, c1, r2, c2) {
             if (nr >= 0 && nr < fullRow && nc >= 0 && nc < fullCol) {
                 let newTurns = (curr.dir === -1 || curr.dir === d) ? curr.turns : curr.turns + 1;
                 if (newTurns <= 2) {
-                    if (board[nr][nc] === 0 || (nr === r2 && nc === c2)) {
+                    if ((board[nr][nc] === 0 && trailBoard[nr][nc] === 0) || (nr === r2 && nc === c2)) {
                         if (newTurns < visited[nr][nc][d]) {
                             visited[nr][nc][d] = newTurns;
                             queue.push({
@@ -370,6 +381,10 @@ function showTip() {
 function checkAndAutoShuffle() {
     let shuffleCount = 0;
     while (!checkHasPairs()) {
+        if (clearTrails()) {
+            render();
+            continue;
+        }
         shuffleBoard();
         shuffleCount++;
         if (shuffleCount > 20) break;
@@ -399,7 +414,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl < 1 || selectedLvl > 4) {
+    if (selectedLvl < 1 || selectedLvl > 5) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -479,6 +494,38 @@ function popBubble(r, c) {
         bubbleBoard[r][c] = false;
         poppedCells.push(r + "_" + c);
     }
+}
+function updateTrails(path) {
+    for (let i = 0; i < fullRow; i++) {
+        for (let j = 0; j < fullCol; j++) {
+            if (trailBoard[i][j] > 0) trailBoard[i][j]--;
+            if (trailBoard[i][j] === 0) trailDir[i][j] = "";
+        }
+    }
+    for (let k = 1; k < path.length - 1; k++) {
+        let cur = path[k];
+        let dirs = "";
+        for (const nb of [path[k - 1], path[k + 1]]) {
+            if (nb.r < cur.r) dirs += "u";
+            else if (nb.r > cur.r) dirs += "d";
+            else if (nb.c < cur.c) dirs += "l";
+            else dirs += "r";
+        }
+        trailBoard[cur.r][cur.c] = trailMoves;
+        trailDir[cur.r][cur.c] = dirs;
+    }
+}
+function clearTrails() {
+    let had = false;
+    for (let i = 0; i < fullRow; i++) {
+        for (let j = 0; j < fullCol; j++) {
+            if (trailBoard[i][j] > 0) {
+                trailBoard[i][j] = 0;
+                had = true;
+            }
+        }
+    }
+    return had;
 }
 setupUI();
 initGame(fullCol, fullRow);
