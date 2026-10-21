@@ -29,11 +29,14 @@ var levelDescriptions = {
     3: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
     4: "Hóa đá: Ô bị hóa đá phải nối 2 lần mới biến mất.",
     5: "Dấu chân: Đường nối vừa ăn để lại dấu, 2 nước tiếp theo không được đi qua.",
-    6: "..",
+    6: "Cổng Dịch Chuyển: Các cặp cổng cùng màu nằm trên ô trống cố định. Đường nối đi vào một cổng sẽ thoát ra cổng cùng màu còn lại và tiếp tục theo hướng cũ; số góc rẽ được tính liên tục xuyên qua cổng",
     7: "..",
     8: "..",
     9: ".."
 };
+var portalBoard = [];
+var portalPairs = [];
+var portalPairCount = 3;
 var game = document.getElementById("game");
 var lineCanvas = document.getElementById("line-canvas");
 var timeBar = document.getElementById("time-bar");
@@ -85,7 +88,9 @@ function initBoard() {
     btnPause.innerText = "Tạm Dừng";
     pauseOverlay.classList.add("hidden");
     clearCanvas();
-    let totalPairs = (row * col) / 2;
+    portalBoard = createPortalBoard();
+    let portalCells = (currentLevel === 6) ? portalPairCount * 2 : 0;
+    let totalPairs = (row * col - portalCells) / 2;
     let cards = [];
     for (let i = 0; i < totalPairs; i++) {
         let pieceId = Math.floor(Math.random() * maxPieces) + 1;
@@ -98,6 +103,8 @@ function initBoard() {
         let rowData = [];
         for (let j = 0; j < fullCol; j++) {
             if (i === 0 || i === fullRow - 1 || j === 0 || j === fullCol - 1) {
+                rowData.push(0);
+            } else if (portalBoard[i][j] > 0) {
                 rowData.push(0);
             } else {
                 rowData.push(cards[idx++]);
@@ -133,6 +140,9 @@ function render() {
             if (poppedCells.includes(i + "_" + j)) cell.classList.add("pop");
             if (val === 0) {
                 cell.classList.add("empty");
+                if (portalBoard[i][j] > 0) {
+                    cell.classList.add("portal", "portal-" + portalBoard[i][j]);
+                }
             } else {
                 if (iceBoard[i][j]) cell.classList.add("ice");
                 let img = document.createElement("div");
@@ -195,7 +205,7 @@ function drawLine(path) {
     for (let i = 0; i < path.length; i++) {
         let x = path[i].c * cellWidth + cellWidth / 2;
         let y = path[i].r * cellHeight + cellHeight / 2;
-        if (i === 0) ctx.moveTo(x, y);
+        if (i === 0 || path[i].tp) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
     }
     ctx.stroke();
@@ -312,22 +322,22 @@ function canConnect(r1, c1, r2, c2) {
         for (let d = 0; d < 4; d++) {
             let nr = curr.r + dirs[d].dr;
             let nc = curr.c + dirs[d].dc;
-            if (nr >= 0 && nr < fullRow && nc >= 0 && nc < fullCol) {
-                let newTurns = (curr.dir === -1 || curr.dir === d) ? curr.turns : curr.turns + 1;
-                if (newTurns <= 2) {
-                    if ((board[nr][nc] === 0 && trailBoard[nr][nc] === 0) || (nr === r2 && nc === c2)) {
-                        if (newTurns < visited[nr][nc][d]) {
-                            visited[nr][nc][d] = newTurns;
-                            queue.push({
-                                r: nr,
-                                c: nc,
-                                dir: d,
-                                turns: newTurns,
-                                path: [...curr.path, { r: nr, c: nc }]
-                            });
-                        }
-                    }
-                }
+            if (nr < 0 || nr >= fullRow || nc < 0 || nc >= fullCol) continue;
+            let newTurns = (curr.dir === -1 || curr.dir === d) ? curr.turns : curr.turns + 1;
+            if (newTurns > 2) continue;
+            let isTarget = (nr === r2 && nc === c2);
+            if (!isTarget && !(board[nr][nc] === 0 && trailBoard[nr][nc] === 0)) continue;
+            let newPath = [...curr.path, { r: nr, c: nc }];
+            let er = nr, ec = nc;
+            if (!isTarget && portalBoard[nr][nc] > 0) {
+                let exit = getPortalExit(nr, nc);
+                er = exit.r;
+                ec = exit.c;
+                newPath.push({ r: er, c: ec, tp: true });
+            }
+            if (newTurns < visited[er][ec][d]) {
+                visited[er][ec][d] = newTurns;
+                queue.push({ r: er, c: ec, dir: d, turns: newTurns, path: newPath });
             }
         }
     }
@@ -414,7 +424,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl < 1 || selectedLvl > 5) {
+    if (selectedLvl < 1 || selectedLvl > 6) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -474,6 +484,31 @@ function applyIceSlide(removed) {
             break;
         }
     }
+}function createPortalBoard() {
+    let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
+    portalPairs = [];
+    if (currentLevel !== 6) return grid;
+    for (let id = 1; id <= portalPairCount; id++) {
+        let cells = [];
+        let tries = 0;
+        while (cells.length < 2 && tries < 500) {
+            tries++;
+            let r = 1 + Math.floor(Math.random() * row);
+            let c = 1 + Math.floor(Math.random() * col);
+            if (grid[r][c] !== 0) continue;
+            if (cells.length === 1 &&
+                Math.abs(cells[0].r - r) + Math.abs(cells[0].c - c) < 5) continue;
+            grid[r][c] = id;
+            cells.push({ r, c });
+        }
+        portalPairs.push(cells);
+    }
+    return grid;
+}
+
+function getPortalExit(r, c) {
+    let pair = portalPairs[portalBoard[r][c] - 1];
+    return (pair[0].r === r && pair[0].c === c) ? pair[1] : pair[0];
 }
 function createBubbleBoard() {
     let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(false));

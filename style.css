@@ -257,3 +257,18 @@ body {
 .cell.trail-old::after {
     opacity: 0.4;
 }
+.cell.portal-1 { --pc: #ef4444; }
+.cell.portal-2 { --pc: #22c55e; }
+.cell.portal-3 { --pc: #a855f7; }
+
+.cell.portal::before {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 6px;
+    border-radius: 50%;
+    background: var(--pc);
+    pointer-events: none;
+}
