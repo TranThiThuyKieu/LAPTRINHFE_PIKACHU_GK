@@ -30,10 +30,13 @@ var levelDescriptions = {
     4: "Hóa đá: Ô bị hóa đá phải nối 2 lần mới biến mất.",
     5: "Dấu chân: Đường nối vừa ăn để lại dấu, 2 nước tiếp theo không được đi qua.",
     6: "Cổng Dịch Chuyển: Các cặp cổng cùng màu nằm trên ô trống cố định. Đường nối đi vào một cổng sẽ thoát ra cổng cùng màu còn lại và tiếp tục theo hướng cũ; số góc rẽ được tính liên tục xuyên qua cổng",
-    7: "..",
+    7: "Khóa và Chìa: Một số ô bị xích, không chọn được cho đến khi ô chìa khóa cùng màu bị xóa",
     8: "..",
     9: ".."
 };
+var lockBoard = [];
+var keyBoard = [];
+var lockPairCount = 4;
 var portalBoard = [];
 var portalPairs = [];
 var portalPairCount = 3;
@@ -114,6 +117,7 @@ function initBoard() {
     }
     iceBoard = createIceBoard();
     bubbleBoard = createBubbleBoard();
+    lockBoard = createLockBoard();
     trailBoard = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
     trailDir = Array.from({ length: fullRow }, () => Array(fullCol).fill(""));
     render();
@@ -145,6 +149,8 @@ function render() {
                 }
             } else {
                 if (iceBoard[i][j]) cell.classList.add("ice");
+                if (lockBoard[i][j] > 0) cell.classList.add("locked", "lock-" + lockBoard[i][j]);
+                if (keyBoard[i][j] > 0) cell.classList.add("key", "lock-" + keyBoard[i][j]);
                 let img = document.createElement("div");
                 img.className = "card-img";
                 img.style.backgroundImage = "url('img/pieces" + val + ".png')";
@@ -234,7 +240,7 @@ function findHintPair() {
     let activeCells = [];
     for (let i = 1; i <= row; i++) {
         for (let j = 1; j <= col; j++) {
-            if (board[i][j] !== 0) {
+            if (board[i][j] !== 0 && lockBoard[i][j] === 0) {
                 activeCells.push({ r: i, c: j, val: board[i][j] });
             }
         }
@@ -264,6 +270,12 @@ function showHint() {
 function onClickCell(r, c) {
     if (!isGameStarted || isPaused || board[r][c] === 0) return;
     let currentCell = document.getElementById("cell_" + r + "_" + c);
+    if (lockBoard[r][c] > 0) {
+        let img = currentCell.querySelector(".card-img");
+        currentCell.classList.add("pop");
+        setTimeout(() => currentCell.classList.remove("pop"), 300);
+        return;
+    }
     if (!firstCell) {
         firstCell = { r, c };
         currentCell.classList.add("selected");
@@ -288,6 +300,10 @@ function onClickCell(r, c) {
                     else board[r1][c1] = 0;
                     if (b2) popBubble(r, c);
                     else board[r][c] = 0;
+                    if (currentLevel === 7) {
+                        releaseKey(r1, c1);
+                        releaseKey(r, c);
+                    }
                     if (!b1 && !b2) {
                     if (currentLevel === 2) applyGravity();
                     if (currentLevel === 3) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
@@ -347,7 +363,7 @@ function checkHasPairs() {
     let activeCells = [];
     for (let i = 1; i <= row; i++) {
         for (let j = 1; j <= col; j++) {
-            if (board[i][j] !== 0) {
+            if (board[i][j] !== 0 && lockBoard[i][j] === 0) {
                 activeCells.push({ r: i, c: j, val: board[i][j] });
             }
         }
@@ -395,6 +411,10 @@ function checkAndAutoShuffle() {
             render();
             continue;
         }
+        if (shuffleCount > 5 && currentLevel === 7 && unlockAll()) {
+            render();
+            continue;
+        }
         shuffleBoard();
         shuffleCount++;
         if (shuffleCount > 20) break;
@@ -424,7 +444,7 @@ function startTimer() {
 }
 function changeLevel() {
     let selectedLvl = parseInt(levelSelect.value);
-    if (selectedLvl < 1 || selectedLvl > 6) {
+    if (selectedLvl < 1 || selectedLvl > 7) {
         alert("Level " + selectedLvl + " chưa có");
         levelSelect.value = currentLevel;
         return;
@@ -509,6 +529,40 @@ function applyIceSlide(removed) {
 function getPortalExit(r, c) {
     let pair = portalPairs[portalBoard[r][c] - 1];
     return (pair[0].r === r && pair[0].c === c) ? pair[1] : pair[0];
+}
+function createLockBoard() {
+    let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
+    keyBoard = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
+    if (currentLevel !== 7) return grid;
+    function pickFree() {
+        while (true) {
+            let r = 1 + Math.floor(Math.random() * row);
+            let c = 1 + Math.floor(Math.random() * col);
+            if (grid[r][c] === 0 && keyBoard[r][c] === 0) return { r, c };
+        }
+    }
+    for (let id = 1; id <= lockPairCount; id++) {
+        let k = pickFree();
+        keyBoard[k.r][k.c] = id;
+        let l = pickFree();
+        grid[l.r][l.c] = id;
+    }
+    return grid;
+}
+function releaseKey(r, c) {
+    let id = keyBoard[r][c];
+    if (!id) return;
+    keyBoard[r][c] = 0;
+    for (let i = 1; i <= row; i++)
+        for (let j = 1; j <= col; j++)
+            if (lockBoard[i][j] === id) lockBoard[i][j] = 0;
+}
+function unlockAll() {
+    let had = false;
+    for (let i = 1; i <= row; i++)
+        for (let j = 1; j <= col; j++)
+            if (lockBoard[i][j] > 0) { lockBoard[i][j] = 0; had = true; }
+    return had;
 }
 function createBubbleBoard() {
     let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(false));
