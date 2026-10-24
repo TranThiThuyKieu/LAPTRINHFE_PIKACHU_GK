@@ -26,12 +26,12 @@ var trailDir = [];
 var levelDescriptions = {
     1: "Cơ bản: Các khối giữ nguyên vị trí khi bị xóa.",
     2: "Rơi xuống: Các khối phía trên rơi xuống lấp chỗ trống khi bị xóa.",
-    3: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
+    3: "Cổng Dịch Chuyển: Các cặp cổng cùng màu nằm trên ô trống cố định. Đường nối đi vào một cổng sẽ thoát ra cổng cùng màu còn lại và tiếp tục theo hướng cũ; số góc rẽ được tính liên tục xuyên qua cổng.",
     4: "Hóa đá: Ô bị hóa đá phải nối 2 lần mới biến mất.",
     5: "Dấu chân: Đường nối vừa ăn để lại dấu, 2 nước tiếp theo không được đi qua.",
-    6: "Cổng Dịch Chuyển: Các cặp cổng cùng màu nằm trên ô trống cố định. Đường nối đi vào một cổng sẽ thoát ra cổng cùng màu còn lại và tiếp tục theo hướng cũ; số góc rẽ được tính liên tục xuyên qua cổng",
-    7: "Khóa và Chìa: Một số ô bị xích, không chọn được cho đến khi ô chìa khóa cùng màu bị xóa",
-    8: "Xếp Tầng: Một số ô có thêm ô nằm dưới. Ô dưới bị che, không chọn được, chỉ hiện ra khi ô tầng trên bị xóa",
+    6: "Ô băng: Khi một cặp bị xóa, ô băng kề sẽ trượt 1 ô vào chỗ trống.",
+    7: "Khóa và Chìa: Một số ô bị xích, không chọn được cho đến khi ô chìa khóa cùng màu bị xóa.",
+    8: "Xếp Tầng: Một số ô có thêm ô nằm dưới. Ô dưới bị che, không chọn được, chỉ hiện ra khi ô tầng trên bị xóa.",
     9: ".."
 };
 var lockBoard = [];
@@ -87,6 +87,7 @@ function initGame(col, row) {
 function initBoard() {
     if (timeInterval) clearInterval(timeInterval);
     clearTimeout(hintTimer);
+    currentHintPair = null;
     isGameStarted = false;
     isPaused = false;
     firstCell = null;
@@ -94,7 +95,7 @@ function initBoard() {
     pauseOverlay.classList.add("hidden");
     clearCanvas();
     portalBoard = createPortalBoard();
-    let portalCells = (currentLevel === 6) ? portalPairCount * 2 : 0;
+    let portalCells = (currentLevel === 3) ? portalPairCount * 2 : 0;
     let extra = (currentLevel === 8) ? stackCount : 0;
     let totalPairs = (row * col - portalCells + extra) / 2;
     let cards = [];
@@ -320,8 +321,8 @@ function onClickCell(r, c) {
                         revealUnder(r, c);
                     }
                     if (!b1 && !b2) {
-                    if (currentLevel === 2) applyGravity();
-                    if (currentLevel === 3) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
+                        if (currentLevel === 2) applyGravity();
+                        if (currentLevel === 6) applyIceSlide([{ r: r1, c: c1 }, { r: r, c: c }]);
                     }
                     if (currentLevel === 5) updateTrails(path);
                     render();
@@ -487,7 +488,7 @@ function applyGravity() {
 }
 function createIceBoard() {
     let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(false));
-    if (currentLevel !== 3) return grid;
+    if (currentLevel !== 6) return grid;
     let n = 0;
     while (n < iceCount) {
         let r = 1 + Math.floor(Math.random() * row);
@@ -527,7 +528,7 @@ function applyIceSlide(removed) {
 }function createPortalBoard() {
     let grid = Array.from({ length: fullRow }, () => Array(fullCol).fill(0));
     portalPairs = [];
-    if (currentLevel !== 6) return grid;
+    if (currentLevel !== 3) return grid;
     for (let id = 1; id <= portalPairCount; id++) {
         let cells = [];
         let tries = 0;
